@@ -9,5 +9,5 @@ public class FlagManApplication {
     public static void main(String[] args) {
         SpringApplication.run(FlagManApplication.class, args);
     }
-
+    
 }
