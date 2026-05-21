@@ -1,0 +1,7 @@
+insert into projects values (6767, "Book Logger",DEFAULT);
+
+insert into feature_flags values (101,6767,"hide-non-fiction","Hide Non Fiction","Flag to Hide Non Fiction Books",DEFAULT,DEFAULT);
+
+insert into feature_flag_config values (1001,101,"PROD",true,50,DEFAULT,DEFAULT);
+
+insert into rules values (10,1001,"author","equals","Tejas");
