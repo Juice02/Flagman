@@ -16,3 +16,21 @@ CREATE TABLE feature_flags (
     updated_on TIMESTAMP
 );
 
+CREATE TABLE feature_flag_config (
+    config_id INT PRIMARY KEY AUTO_INCREMENT,
+    flag_id INT,
+    environment varchar(10),
+    enabled BOOLEAN,
+    rollout_percentage INT,
+    created_on TIMESTAMP,
+    updated_on TIMESTAMP
+);
+
+CREATE TABLE rules (
+    rule_id INT PRIMARY KEY AUTO_INCREMENT,
+    config_id INT,
+    attribute varchar(20),
+    operator varchar(10),
+    value varchar(20)
+);
+
