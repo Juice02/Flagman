@@ -10,4 +10,5 @@ public class FlagManApplication {
         SpringApplication.run(FlagManApplication.class, args);
     }
     
+
 }
