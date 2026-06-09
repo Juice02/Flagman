@@ -11,7 +11,7 @@ import java.util.List;
 
 @RestController
 public class FeatureFlagController {
-    public FeatureFlagService featureFlagService;
+    private final FeatureFlagService featureFlagService;
 
     public FeatureFlagController(FeatureFlagService featureFlagService) { this.featureFlagService = featureFlagService; }
 
