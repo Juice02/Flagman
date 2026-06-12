@@ -5,6 +5,7 @@ import com.devjuice.flagman.entity.FeatureFlag;
 import com.devjuice.flagman.entity.Project;
 import com.devjuice.flagman.service.FeatureFlagService;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -19,4 +20,10 @@ public class FeatureFlagController {
     public List<FeatureFlag> getFeatureFlags() {
         return featureFlagService.getAllFeatureFlags();
     }
+
+    @GetMapping("projects/{projectId}/flags")
+    public List<FeatureFlag> getFlagsForProject(@PathVariable Integer projectId) {
+        return featureFlagService.getFlagsForProject(projectId);
+    }
+
 }
