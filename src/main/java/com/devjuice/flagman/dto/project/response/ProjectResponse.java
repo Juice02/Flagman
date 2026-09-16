@@ -2,11 +2,11 @@ package com.devjuice.flagman.dto.project.response;
 
 import java.time.LocalDateTime;
 
-public class CreateProjectResponse {
+public class ProjectResponse {
 
     private Integer projectId;
     private String name;
-    private LocalDateTime createdOn;
+    private String createdOn;
 
     public Integer getProjectId() {
         return projectId;
@@ -16,7 +16,7 @@ public class CreateProjectResponse {
         return name;
     }
 
-    public LocalDateTime getCreatedOn() {
+    public String getCreatedOn() {
         return createdOn;
     }
 
@@ -28,7 +28,7 @@ public class CreateProjectResponse {
         this.projectId = projectId;
     }
 
-    public void setCreatedOn(LocalDateTime createdOn) {
+    public void setCreatedOn(String createdOn) {
         this.createdOn = createdOn;
     }
 

@@ -28,4 +28,7 @@ public class Project {
         return createdOn;
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
 }
