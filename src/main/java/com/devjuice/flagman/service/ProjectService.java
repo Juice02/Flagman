@@ -6,6 +6,7 @@ import com.devjuice.flagman.entity.Project;
 import com.devjuice.flagman.repository.ProjectRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -25,6 +26,7 @@ public class ProjectService {
 
         Project project = new Project();
         project.setName(request.getName());
+        project.setCreatedOn(LocalDateTime.now());
         Project savedProject = projectRepository.save(project);
 
         ProjectResponse response = new ProjectResponse();

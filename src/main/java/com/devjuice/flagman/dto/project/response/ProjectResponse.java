@@ -6,7 +6,7 @@ public class ProjectResponse {
 
     private Integer projectId;
     private String name;
-    private String createdOn;
+    private LocalDateTime createdOn;
 
     public Integer getProjectId() {
         return projectId;
@@ -16,7 +16,7 @@ public class ProjectResponse {
         return name;
     }
 
-    public String getCreatedOn() {
+    public LocalDateTime getCreatedOn() {
         return createdOn;
     }
 
@@ -28,7 +28,7 @@ public class ProjectResponse {
         this.projectId = projectId;
     }
 
-    public void setCreatedOn(String createdOn) {
+    public void setCreatedOn(LocalDateTime createdOn) {
         this.createdOn = createdOn;
     }
 

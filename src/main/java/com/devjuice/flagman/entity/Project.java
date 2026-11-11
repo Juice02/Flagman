@@ -1,6 +1,8 @@
 package com.devjuice.flagman.entity;
 import jakarta.persistence.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name="projects")
 public class Project {
@@ -14,7 +16,7 @@ public class Project {
     private String name;
 
     @Column(name="created_on")
-    private String createdOn;
+    private LocalDateTime createdOn;
 
     public int getProjectId() {
         return projectId;
@@ -24,11 +26,15 @@ public class Project {
         return name;
     }
 
-    public String getCreatedOn() {
+    public LocalDateTime getCreatedOn() {
         return createdOn;
     }
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public void setCreatedOn(LocalDateTime createdOn) {
+        this.createdOn = createdOn;
     }
 }
