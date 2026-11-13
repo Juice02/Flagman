@@ -2,6 +2,16 @@
 
 A feature flag management service (Spring Boot 4, Java 21, MySQL).
 
+## Why I built this
+
+I built FlagMan to understand feature flag systems inside and out. Tools like LaunchDarkly, Unleash and Firebase Remote Config already solve this problem well. Building one from scratch is how I'm learning what happens underneath:
+- modeling projects, flags, per-environment configs and targeting rules
+- evaluating a flag for a user
+- making percentage rollouts deterministic
+- keeping evaluation fast and reliable
+
+It's also a self-hosted tool I plan to use in my own future projects.
+
 ## Docker setup
 
 Runs MySQL 8.4 and the app in Docker. Works the same on Apple Silicon (arm64) and Windows/WSL2 (amd64).
