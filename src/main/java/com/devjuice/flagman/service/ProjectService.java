@@ -20,8 +20,11 @@ public class ProjectService {
     }
 
 
-    public List<Project> getAllProjects() {
-        return projectRepository.findAll();
+    public List<ProjectResponse> getAllProjects() {
+        return projectRepository.findAll()
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     public ProjectResponse createProject(CreateProjectRequest request) {

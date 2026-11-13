@@ -2,7 +2,6 @@ package com.devjuice.flagman.controller;
 
 import com.devjuice.flagman.dto.project.request.CreateProjectRequest;
 import com.devjuice.flagman.dto.project.response.ProjectResponse;
-import com.devjuice.flagman.entity.Project;
 import com.devjuice.flagman.service.ProjectService;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,7 +17,7 @@ public class ProjectController {
     }
 
     @GetMapping("/projects")
-    public List<Project> getProjects() {
+    public List<ProjectResponse> getProjects() {
         return projectService.getAllProjects();
     }
 
