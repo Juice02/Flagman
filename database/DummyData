@@ -1,7 +1,43 @@
-insert into projects values (6767, "Book Logger",DEFAULT);
+-- Mock data for local development. Load with `make seed` (after `make up` on a fresh database).
+-- Every flag has a config for each environment: DEV, STAGING, PREPROD, PROD.
 
-insert into feature_flags values (101,6767,"hide-non-fiction","Hide Non Fiction","Flag to Hide Non Fiction Books",DEFAULT,DEFAULT);
+-- Projects
+insert into projects values (6767, "Book Logger", DEFAULT);
+insert into projects values (6768, "Shop", DEFAULT);
 
-insert into feature_flag_config values (1001,101,"PROD",true,50,DEFAULT,DEFAULT);
+-- Flags (the same key can exist in different projects, e.g. dark-mode)
+insert into feature_flags values (101, 6767, "hide-non-fiction", "Hide Non Fiction", "Flag to Hide Non Fiction Books", NOW(), NOW());
+insert into feature_flags values (102, 6767, "dark-mode", "Dark Mode", "Dark theme for the reading list", NOW(), NOW());
+insert into feature_flags values (201, 6768, "new-checkout", "New Checkout", "Redesigned one-page checkout flow", NOW(), NOW());
+insert into feature_flags values (202, 6768, "dark-mode", "Dark Mode", "Dark theme for the storefront", NOW(), NOW());
 
-insert into rules values (10,1001,"author","equals","Tejas");
+-- Configs: (config_id, flag_id, environment, enabled, rollout_percentage, created_on, updated_on)
+-- hide-non-fiction: fully on in lower envs, 50% in prod
+insert into feature_flag_config values (1001, 101, "PROD", true, 50, NOW(), NOW());
+insert into feature_flag_config values (1002, 101, "DEV", true, 100, NOW(), NOW());
+insert into feature_flag_config values (1003, 101, "STAGING", true, 100, NOW(), NOW());
+insert into feature_flag_config values (1004, 101, "PREPROD", true, 100, NOW(), NOW());
+
+-- dark-mode (Book Logger): being rolled out gradually
+insert into feature_flag_config values (1005, 102, "DEV", true, 100, NOW(), NOW());
+insert into feature_flag_config values (1006, 102, "STAGING", true, 100, NOW(), NOW());
+insert into feature_flag_config values (1007, 102, "PREPROD", true, 50, NOW(), NOW());
+insert into feature_flag_config values (1008, 102, "PROD", false, 0, NOW(), NOW());
+
+-- new-checkout: on in DEV, 30% in STAGING for India only, off further up
+insert into feature_flag_config values (2001, 201, "DEV", true, 100, NOW(), NOW());
+insert into feature_flag_config values (2002, 201, "STAGING", true, 30, NOW(), NOW());
+insert into feature_flag_config values (2003, 201, "PREPROD", false, 0, NOW(), NOW());
+insert into feature_flag_config values (2004, 201, "PROD", false, 0, NOW(), NOW());
+
+-- dark-mode (Shop): fully launched everywhere
+insert into feature_flag_config values (2005, 202, "DEV", true, 100, NOW(), NOW());
+insert into feature_flag_config values (2006, 202, "STAGING", true, 100, NOW(), NOW());
+insert into feature_flag_config values (2007, 202, "PREPROD", true, 100, NOW(), NOW());
+insert into feature_flag_config values (2008, 202, "PROD", true, 100, NOW(), NOW());
+
+-- Rules: (rule_id, config_id, attribute, operator, value). Rules on one config are combined with AND.
+insert into rules values (10, 1001, "author", "equals", "Tejas");
+insert into rules values (11, 2002, "country", "equals", "IN");
+insert into rules values (12, 2002, "appVersion", ">", "10");
+insert into rules values (13, 1007, "email", "contains", "@company.com");

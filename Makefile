@@ -1,6 +1,6 @@
 COMPOSE := docker compose
 
-.PHONY: help up db down logs ps build reset mysql
+.PHONY: help up db down logs ps build reset mysql seed
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "} {printf "  %-8s %s\n", $$1, $$2}'
@@ -31,6 +31,9 @@ reset: ## Stop everything and DELETE the database volume (asks first)
 	else \
 		echo "Aborted."; \
 	fi
+
+seed: ## Load mock data from database/DummyData (run once on a fresh database)
+	$(COMPOSE) exec -T mysql sh -c 'mysql -u"$$MYSQL_USER" -p"$$MYSQL_PASSWORD" "$$MYSQL_DATABASE"' < database/DummyData
 
 mysql: ## Open a MySQL shell as the app user
 	$(COMPOSE) exec mysql sh -c 'mysql -u"$$MYSQL_USER" -p"$$MYSQL_PASSWORD" "$$MYSQL_DATABASE"'
