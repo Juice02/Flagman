@@ -39,3 +39,12 @@ ALTER TABLE feature_flags ADD CONSTRAINT fk_projectId FOREIGN KEY (project_id) R
 ALTER TABLE feature_flag_config ADD CONSTRAINT fk_flagId FOREIGN KEY (flag_id) REFERENCES feature_flags(flag_id);
 
 ALTER TABLE rules ADD CONSTRAINT fk_configId FOREIGN KEY (config_id) REFERENCES feature_flag_config(config_id);
+
+-- A flag key is unique within its project (different projects can reuse a key).
+ALTER TABLE feature_flags ADD CONSTRAINT uq_project_flag_key UNIQUE (project_id, flag_key);
+
+-- A flag has at most one config per environment.
+ALTER TABLE feature_flag_config ADD CONSTRAINT uq_flag_environment UNIQUE (flag_id, environment);
+
+-- Only the fixed environments are allowed (matches the Java Environment enum).
+ALTER TABLE feature_flag_config ADD CONSTRAINT chk_environment CHECK (environment IN ('DEV', 'STAGING', 'PREPROD', 'PROD'));

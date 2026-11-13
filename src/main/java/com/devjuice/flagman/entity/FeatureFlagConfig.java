@@ -17,8 +17,9 @@ public class FeatureFlagConfig {
     @JoinColumn(name="flag_id")
     private FeatureFlag featureFlag;
 
+    @Enumerated(EnumType.STRING)
     @Column(name="environment")
-    private String environment;
+    private Environment environment;
 
     @Column(name="enabled")
     private Integer enabled;
@@ -52,7 +53,7 @@ public class FeatureFlagConfig {
         return enabled;
     }
 
-    public String getEnvironment() {
+    public Environment getEnvironment() {
         return environment;
     }
 
