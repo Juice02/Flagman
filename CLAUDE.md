@@ -53,11 +53,11 @@ The only test is a `@SpringBootTest` context-load test. It needs a reachable MyS
 
 The package is `com.devjuice.flagman`, with a conventional layered structure: `controller` → `service` → `repository` (Spring Data `JpaRepository`) → `entity`.
 
-- Controllers are thin and use constructor injection. Project endpoints use DTOs (`dto/project/request`, `dto/project/response`), built in the service by a private `toResponse(entity)` helper. A missing project throws `ResponseStatusException(NOT_FOUND)`. The flag, config and rule endpoints still return entities.
+- Controllers are thin and use constructor injection. Project and `/projects/{projectId}/flags` endpoints use DTOs (`dto/<feature>/request`, `dto/<feature>/response`), built in the service by a private `toResponse(entity)` helper. A missing project throws `ResponseStatusException(NOT_FOUND)`. `/featureFlags`, the config and rule endpoints still return entities.
 - Entities map `@ManyToOne` relationships up the hierarchy (`FeatureFlag.project`, `FeatureFlagConfig.featureFlag`, `Rule.featureFlagConfig`). Lookups by parent use derived queries such as `findByFeatureFlag(FeatureFlag)`.
 - Current endpoints:
   - `GET/POST /projects`, `GET /projects/{projectId}`
-  - `GET /projects/{projectId}/flags`
+  - `GET/POST /projects/{projectId}/flags` (POST returns 201, 409 on duplicate `flagKey`, and auto-creates a disabled 0% config per environment)
   - `GET /featureFlags`
   - `GET /featureFlagConfigs`
   - `GET /flags/{featureId}/configs`
@@ -65,4 +65,4 @@ The package is `com.devjuice.flagman`, with a conventional layered structure: `c
 
 Known quirks in the current code:
 - `Rule.ruleId` has no `@GeneratedValue`.
-- `FeatureFlagConfigService.getFeatureFlagConfigById` and `FeatureFlagService.getFlagsForProject` use a bare `orElseThrow()`, so an unknown ID returns a 500 instead of a 404.
+- `FeatureFlagConfigService.getFeatureFlagConfigById` uses a bare `orElseThrow()`, so an unknown ID returns a 500 instead of a 404.

@@ -21,8 +21,8 @@ public class FeatureFlagController {
         return featureFlagService.getAllFeatureFlags();
     }
 
-    @GetMapping("projects/{projectId}/flags")
-    public List<FeatureFlag> getFlagsForProject(@PathVariable Integer projectId) {
+    @GetMapping("/projects/{projectId}/flags")
+    public List<FlagResponse> getFlagsForProject(@PathVariable Integer projectId) {
         return featureFlagService.getFlagsForProject(projectId);
     }
 

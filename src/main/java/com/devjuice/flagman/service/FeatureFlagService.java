@@ -34,19 +34,17 @@ public class FeatureFlagService {
         return featureFlagRepository.findAll();
     }
 
-    public List<FeatureFlag> getFlagsForProject(Integer projectId) {
-        Project project = projectRepository.findById(projectId).orElseThrow();
-
-        return featureFlagRepository.findByProject(project);
-
+    public List<FlagResponse> getFlagsForProject(Integer projectId) {
+        return featureFlagRepository.findByProject(findProject(projectId))
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     // One transaction: if any config fails to save, the flag is rolled back too.
     @Transactional
     public FlagResponse createFlag(Integer projectId, CreateFlagRequest request) {
-        Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Project " + projectId + " not found"));
+        Project project = findProject(projectId);
 
         // shortcut: two simultaneous requests can both pass this check; the DB unique constraint then returns a 500, fine until Phase 4 error handling.
         if (featureFlagRepository.existsByProjectAndFlagKey(project, request.getFlagKey())) {
@@ -76,6 +74,12 @@ public class FeatureFlagService {
         }
 
         return toResponse(savedFlag);
+    }
+
+    private Project findProject(Integer projectId) {
+        return projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Project " + projectId + " not found"));
     }
 
     // Converts the database entity into the shape the API returns.
