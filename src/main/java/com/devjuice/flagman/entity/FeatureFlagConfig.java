@@ -80,4 +80,8 @@ public class FeatureFlagConfig {
     public void setCreatedOn(LocalDateTime createdOn) {
         this.createdOn = createdOn;
     }
+
+    public void setUpdatedOn(LocalDateTime updatedOn) {
+        this.updatedOn = updatedOn;
+    }
 }

@@ -76,6 +76,13 @@ public class FeatureFlagService {
         return toResponse(savedFlag);
     }
 
+    // Public so the config service (and later DELETE) can look up a flag the same way.
+    public FeatureFlag findFlag(Integer projectId, String flagKey) {
+        return featureFlagRepository.findByProjectAndFlagKey(findProject(projectId), flagKey)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Flag " + flagKey + " not found in project " + projectId));
+    }
+
     private Project findProject(Integer projectId) {
         return projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResponseStatusException(
