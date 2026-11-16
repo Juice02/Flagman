@@ -1,4 +1,4 @@
-CREATE DATABASE feature_flag_system;
+-- Baseline: the schema as it was before Flyway was introduced (from database/schema).
 
 CREATE TABLE projects (
     project_id INT PRIMARY KEY AUTO_INCREMENT,

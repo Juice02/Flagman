@@ -34,8 +34,9 @@ make up                # builds the app, starts MySQL, waits until healthy
 The API is then at http://localhost:8081 (try `curl localhost:8081/projects`).
 MySQL is reachable from the host on port **3307**.
 
-On first start, MySQL creates the database and app user from `.env` and loads `database/schema`.
-Dummy data is **not** loaded automatically.
+On first start, MySQL creates the database and app user from `.env`. When the app starts, Flyway
+creates or updates the tables (see [Database migrations](#database-migrations)).
+Mock data is **not** loaded automatically: run `make seed` once on a fresh database.
 
 ### Daily workflow
 
@@ -46,7 +47,8 @@ Dummy data is **not** loaded automatically.
 | `make logs`  | Follow logs                                             |
 | `make ps`    | Show status and health                                  |
 | `make mysql` | MySQL shell as the app user                             |
-| `make reset` | Delete the database volume (asks first); schema reloads on next `make up` |
+| `make seed`  | Load mock data from `database/DummyData` (once, on a fresh database) |
+| `make reset` | Delete the database volume (asks first); tables are recreated on next `make up` |
 
 **Running the app from your IDE instead:** run `make db` to start only MySQL, then start the app
 with `./mvnw spring-boot:run` or from the IDE, with the project root as the working directory. The app
@@ -61,5 +63,17 @@ running, stop it first (`docker compose stop app`) so port 8081 is free.
   `sudo usermod -aG docker $USER`, then run `wsl --shutdown` from Windows and reopen the terminal.
 - **"docker: command not found" or "Cannot connect to the Docker daemon" in WSL with Docker Desktop:**
   Docker Desktop isn't running, or WSL integration isn't enabled for your distro (see Prerequisites).
-- **Schema changes not showing up / login fails after changing passwords in `.env`:** the init
-  scripts and credentials only apply when the volume is first created. Run `make reset`, then `make up`.
+- **Login fails after changing passwords in `.env`:** MySQL only applies credentials when the volume
+  is first created. Run `make reset`, then `make up` (and `make seed` if you want mock data back).
+- **App won't start with a Flyway "checksum mismatch" error:** a migration that already ran was edited.
+  Undo the edit and put the change in a new migration file instead.
+
+## Database migrations
+
+The schema is managed by [Flyway](https://documentation.red-gate.com/fd). Migrations live in
+`src/main/resources/db/migration/` and run automatically when the app starts. Only migrations a
+database hasn't seen yet are applied, so existing data is kept.
+
+To change the schema, add a new file with the next version number, e.g.
+`V3__add_flag_tags.sql` (capital `V`, **two** underscores). Then run `make up`.
+Never edit a migration that has already been applied; add a new one instead.

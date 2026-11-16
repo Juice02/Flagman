@@ -17,7 +17,8 @@ make down        # stop containers, keep data
 make logs        # follow logs
 make ps          # status
 make mysql       # MySQL shell as the app user
-make reset       # delete the DB volume (prompts); schema reloads on next `make up`
+make seed        # load mock data (database/DummyData) into a fresh DB
+make reset       # delete the DB volume (prompts); tables recreated by Flyway on next `make up`
 ```
 
 - The API listens on http://localhost:8081, and MySQL is exposed on host port **3307** (it listens on 3306 inside the Compose network).
@@ -42,19 +43,20 @@ The only test is a `@SpringBootTest` context-load test. It needs a reachable MyS
 
 ## Database
 
-- `spring.jpa.hibernate.ddl-auto=none`, so Hibernate never touches the schema. The source of truth is `database/schema` (plain SQL with no extension).
-- `docker/mysql/init/01-schema.sh` loads `database/schema` on first volume creation only, skipping its `CREATE DATABASE` line because the image creates the DB itself. Schema changes need `make reset`.
-- `database/DummyData` is **not** loaded automatically. Load it only when the user asks.
+- The schema is managed by **Flyway**. Migrations live in `src/main/resources/db/migration/` (`V1__initial_schema.sql`, `V2__...`) and run on app startup. `spring.jpa.hibernate.ddl-auto=none`, so Hibernate never touches the schema.
+- **Never edit an applied migration** (it causes a checksum failure on startup). Schema changes are a new `V<n+1>__description.sql`.
+- `database/DummyData` holds mock data (2 projects, 4 flags, configs for every environment, a few rules). It is loaded only by `make seed`, never by migrations.
+- Constraints: `flag_key` is unique per project, `(flag_id, environment)` is unique, and `environment` is limited to `DEV`, `STAGING`, `PREPROD`, `PROD` (the `Environment` enum, stored with `@Enumerated(STRING)`).
 - Data model: `projects` → `feature_flags` → `feature_flag_config` (per environment, with `enabled` and `rollout_percentage`) → `rules` (attribute/operator/value targeting).
 
 ## Code architecture
 
 The package is `com.devjuice.flagman`, with a conventional layered structure: `controller` → `service` → `repository` (Spring Data `JpaRepository`) → `entity`.
 
-- Controllers are thin and use constructor injection. Most endpoints return JPA entities directly. Only `Project` creation uses request/response DTOs (`dto/project/request`, `dto/project/response`), which is the pattern being moved toward.
+- Controllers are thin and use constructor injection. Project endpoints use DTOs (`dto/project/request`, `dto/project/response`), built in the service by a private `toResponse(entity)` helper. A missing project throws `ResponseStatusException(NOT_FOUND)`. The flag, config and rule endpoints still return entities.
 - Entities map `@ManyToOne` relationships up the hierarchy (`FeatureFlag.project`, `FeatureFlagConfig.featureFlag`, `Rule.featureFlagConfig`). Lookups by parent use derived queries such as `findByFeatureFlag(FeatureFlag)`.
 - Current endpoints:
-  - `GET/POST /projects`
+  - `GET/POST /projects`, `GET /projects/{projectId}`
   - `GET /projects/{projectId}/flags`
   - `GET /featureFlags`
   - `GET /featureFlagConfigs`
@@ -62,7 +64,6 @@ The package is `com.devjuice.flagman`, with a conventional layered structure: `c
   - `GET /rules`
 
 Known quirks in the current code:
-- `Project.createdOn` and the DTO's `createdOn` are `String`s, and inserts send `null`, which overrides the column's `DEFAULT CURRENT_TIMESTAMP`.
 - `FeatureFlagConfig.enabled` is an `Integer` mapped to a `BOOLEAN` column.
 - `Rule.ruleId` has no `@GeneratedValue`.
-- `FeatureFlagConfigService.getFeatureFlagConfigById` uses a bare `orElseThrow()`, so an unknown flag ID returns a 500 instead of a 404.
+- `FeatureFlagConfigService.getFeatureFlagConfigById` and `FeatureFlagService.getFlagsForProject` use a bare `orElseThrow()`, so an unknown ID returns a 500 instead of a 404.
