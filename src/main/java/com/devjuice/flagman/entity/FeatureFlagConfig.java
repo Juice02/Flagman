@@ -22,7 +22,7 @@ public class FeatureFlagConfig {
     private Environment environment;
 
     @Column(name="enabled")
-    private Integer enabled;
+    private Boolean enabled;
 
     @Column(name="rollout_percentage")
     private Integer rolloutPercent;
@@ -49,7 +49,7 @@ public class FeatureFlagConfig {
         return featureFlag;
     }
 
-    public Integer getEnabled() {
+    public Boolean getEnabled() {
         return enabled;
     }
 
@@ -59,5 +59,25 @@ public class FeatureFlagConfig {
 
     public LocalDateTime getCreatedOn() {
         return createdOn;
+    }
+
+    public void setFeatureFlag(FeatureFlag featureFlag) {
+        this.featureFlag = featureFlag;
+    }
+
+    public void setEnvironment(Environment environment) {
+        this.environment = environment;
+    }
+
+    public void setEnabled(Boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public void setRolloutPercent(Integer rolloutPercent) {
+        this.rolloutPercent = rolloutPercent;
+    }
+
+    public void setCreatedOn(LocalDateTime createdOn) {
+        this.createdOn = createdOn;
     }
 }

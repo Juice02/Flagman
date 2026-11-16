@@ -64,6 +64,5 @@ The package is `com.devjuice.flagman`, with a conventional layered structure: `c
   - `GET /rules`
 
 Known quirks in the current code:
-- `FeatureFlagConfig.enabled` is an `Integer` mapped to a `BOOLEAN` column.
 - `Rule.ruleId` has no `@GeneratedValue`.
 - `FeatureFlagConfigService.getFeatureFlagConfigById` and `FeatureFlagService.getFlagsForProject` use a bare `orElseThrow()`, so an unknown ID returns a 500 instead of a 404.

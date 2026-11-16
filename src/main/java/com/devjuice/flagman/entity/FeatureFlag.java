@@ -62,28 +62,24 @@ public class FeatureFlag {
         return friendlyName;
     }
 
-//    public void setCreatedOn(LocalDateTime createdOn) {
-//        this.createdOn = createdOn;
-//    }
-//
-//    public void setFlagId(Integer flagId) {
-//        this.flagId = flagId;
-//    }
-//
-//    public void setDescription(String description) {
-//        this.description = description;
-//    }
-//
-//    public void setFlagKey(String flagKey) {
-//        this.flagKey = flagKey;
-//    }
-//
-//    public void setFriendlyName(String friendlyName) {
-//        this.friendlyName = friendlyName;
-//    }
-//
-//    public void setUpdatedOn(LocalDateTime updatedOn) {
-//        this.updatedOn = updatedOn;
-//    }
+    public void setProject(Project project) {
+        this.project = project;
+    }
+
+    public void setFlagKey(String flagKey) {
+        this.flagKey = flagKey;
+    }
+
+    public void setFriendlyName(String friendlyName) {
+        this.friendlyName = friendlyName;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setCreatedOn(LocalDateTime createdOn) {
+        this.createdOn = createdOn;
+    }
 
 }
