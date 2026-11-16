@@ -32,7 +32,7 @@ public class FeatureFlagConfigController {
         return featureFlagConfigService.getConfig(projectId, flagKey, environment);
     }
 
-    @PutMapping("/projects/{projectId}/flags/{flagKey}/configs/{environment}")
+    @PatchMapping("/projects/{projectId}/flags/{flagKey}/configs/{environment}")
     public FlagConfigResponse updateConfig(@PathVariable Integer projectId, @PathVariable String flagKey,
                                            @PathVariable Environment environment,
                                            @RequestBody UpdateConfigRequest request) {

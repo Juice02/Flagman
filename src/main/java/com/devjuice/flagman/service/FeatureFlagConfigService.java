@@ -43,16 +43,19 @@ public class FeatureFlagConfigService {
 
     public FlagConfigResponse updateConfig(Integer projectId, String flagKey, Environment environment,
                                            UpdateConfigRequest request) {
-        // PUT replaces the whole config, so both fields are required.
+        // PATCH: only the fields sent are changed; a missing field keeps its current value.
         Integer rollout = request.getRolloutPercentage();
-        if (request.getEnabled() == null || rollout == null || rollout < 0 || rollout > 100) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "enabled is required and rolloutPercentage must be between 0 and 100");
+        if (rollout != null && (rollout < 0 || rollout > 100)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "rolloutPercentage must be between 0 and 100");
         }
 
         FeatureFlagConfig config = findConfig(projectId, flagKey, environment);
-        config.setEnabled(request.getEnabled());
-        config.setRolloutPercent(rollout);
+        if (request.getEnabled() != null) {
+            config.setEnabled(request.getEnabled());
+        }
+        if (rollout != null) {
+            config.setRolloutPercent(rollout);
+        }
         config.setUpdatedOn(LocalDateTime.now());
 
         return toResponse(featureFlagConfigRepository.save(config));
