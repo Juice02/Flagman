@@ -10,4 +10,6 @@ public interface FeatureFlagRepository extends JpaRepository<FeatureFlag,Integer
 
     List<FeatureFlag> findByProject(Project project);
 
+    boolean existsByProjectAndFlagKey(Project project, String flagKey);
+
 }
