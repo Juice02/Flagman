@@ -37,7 +37,9 @@ insert into feature_flag_config values (2007, 202, "PREPROD", true, 100, NOW(), 
 insert into feature_flag_config values (2008, 202, "PROD", true, 100, NOW(), NOW());
 
 -- Rules: (rule_id, config_id, attribute, operator, value). Rules on one config are combined with AND.
-insert into rules values (10, 1001, "author", "equals", "Tejas");
-insert into rules values (11, 2002, "country", "equals", "IN");
-insert into rules values (12, 2002, "appVersion", ">", "10");
-insert into rules values (13, 1007, "email", "contains", "@company.com");
+-- Operators: EQUALS, NOT_EQUALS, IN (comma-separated list), CONTAINS.
+insert into rules values (10, 1001, "author", "EQUALS", "Tejas");
+insert into rules values (11, 2002, "country", "EQUALS", "IN");
+insert into rules values (12, 2002, "platform", "IN", "web,android");
+insert into rules values (13, 1007, "email", "CONTAINS", "@company.com");
+insert into rules values (14, 1001, "country", "NOT_EQUALS", "US");

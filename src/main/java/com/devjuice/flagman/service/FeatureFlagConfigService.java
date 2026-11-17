@@ -61,7 +61,8 @@ public class FeatureFlagConfigService {
         return toResponse(featureFlagConfigRepository.save(config));
     }
 
-    private FeatureFlagConfig findConfig(Integer projectId, String flagKey, Environment environment) {
+    // Public so the evaluation service can look up a config the same way.
+    public FeatureFlagConfig findConfig(Integer projectId, String flagKey, Environment environment) {
         FeatureFlag flag = featureFlagService.findFlag(projectId, flagKey);
         return featureFlagConfigRepository.findByFeatureFlagAndEnvironment(flag, environment)
                 .orElseThrow(() -> new ResponseStatusException(

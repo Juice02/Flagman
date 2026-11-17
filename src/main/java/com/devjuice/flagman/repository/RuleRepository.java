@@ -8,6 +8,8 @@ import java.util.List;
 
 public interface RuleRepository extends JpaRepository<Rule,Integer> {
 
+    List<Rule> findByFeatureFlagConfig(FeatureFlagConfig config);
+
     void deleteByFeatureFlagConfigIn(List<FeatureFlagConfig> configs);
 
 }

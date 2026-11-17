@@ -45,7 +45,7 @@ The only test is a `@SpringBootTest` context-load test. It needs a reachable MyS
 
 - The schema is managed by **Flyway**. Migrations live in `src/main/resources/db/migration/` (`V1__initial_schema.sql`, `V2__...`) and run on app startup. `spring.jpa.hibernate.ddl-auto=none`, so Hibernate never touches the schema.
 - **Never edit an applied migration** (it causes a checksum failure on startup). Schema changes are a new `V<n+1>__description.sql`.
-- `database/DummyData` holds mock data (2 projects, 4 flags, configs for every environment, a few rules). It is loaded only by `make seed`, never by migrations.
+- `database/DummyData` holds mock data (2 projects, 4 flags, configs for every environment, and 5 rules covering every operator). It is loaded only by `make seed`, never by migrations.
 - Constraints: `flag_key` is unique per project, `(flag_id, environment)` is unique, and `environment` is limited to `DEV`, `STAGING`, `PREPROD`, `PROD` (the `Environment` enum, stored with `@Enumerated(STRING)`).
 - Data model: `projects` → `feature_flags` → `feature_flag_config` (per environment, with `enabled` and `rollout_percentage`) → `rules` (attribute/operator/value targeting).
 
@@ -60,11 +60,13 @@ The package is `com.devjuice.flagman`, with a conventional layered structure: `c
   - `GET/POST /projects/{projectId}/flags` (POST returns 201, 409 on duplicate `flagKey`, and auto-creates a disabled 0% config per environment)
   - `GET/PATCH /projects/{projectId}/flags/{flagKey}/configs/{environment}` (PATCH changes only the fields sent; `rolloutPercentage` must be 0–100, else 400; environment must be uppercase, else 400)
   - `DELETE /projects/{projectId}/flags/{flagKey}` (204; deletes its rules and configs first, in one transaction)
+  - `POST /evaluate`: the body is `{projectId, flagKey, environment, userId, attributes}` and the response is `{enabled, reason}`. The order is: a disabled flag gives `FLAG_DISABLED`; then every rule must match (AND), else `RULES_NOT_MATCHED`; then the user is in if `CRC32(flagKey + ":" + userId) % 100 < rolloutPercentage` (`IN_ROLLOUT` / `OUT_OF_ROLLOUT`). Changing that formula reshuffles every user. A missing field or a bad environment gives 400; an unknown project, flag or config gives 404.
   - `GET /featureFlags`
   - `GET /featureFlagConfigs`
   - `GET /flags/{featureId}/configs`
   - `GET /rules`
 
 Known quirks in the current code:
-- `Rule.ruleId` has no `@GeneratedValue`.
+- `Rule.ruleId` has no `@GeneratedValue` (harmless until there's a create-rule endpoint; rules only come from `make seed`).
+- `Rule.operator` is a plain String, matched case-insensitively in `EvaluationService`: `EQUALS`, `NOT_EQUALS`, `IN` (comma-separated value), `CONTAINS`. An unknown operator or a missing attribute never matches. The `operator` column is `varchar(10)` and `value` is `varchar(20)`.
 - `FeatureFlagConfigService.getFeatureFlagConfigById` uses a bare `orElseThrow()`, so an unknown ID returns a 500 instead of a 404.
