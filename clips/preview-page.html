@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlagMan clips</title>
+<style>
+:root{--bg:#ffffff;--ink:#16181d;--muted:#5b606b;--code:#f1f1ec}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111113;--ink:#f2f2f3;--muted:#a1a4ab;--code:#1f1f23}}
+:root[data-theme="dark"]{--bg:#111113;--ink:#f2f2f3;--muted:#a1a4ab;--code:#1f1f23}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,sans-serif}
+main{max-width:860px;margin:0 auto;padding:40px 16px 64px;box-sizing:border-box}
+header{margin-bottom:48px}
+h1{font-size:30px;margin:0 0 12px;letter-spacing:-0.01em;line-height:1.2}
+h2{font-size:22px;margin:0 0 8px;letter-spacing:-0.01em}
+p{margin:0 0 16px;color:var(--muted);line-height:1.55;max-width:680px}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.92em;background:var(--code);padding:1px 5px;border-radius:4px;color:var(--ink)}
+section{margin-bottom:56px}
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>FlagMan: feature flags with per-environment rollouts and targeting rules</h1>
+<p>Without feature flags, deploying code and releasing a feature happen at the same moment. If the feature breaks, the only fix is another deploy, and every user gets every change at once.</p>
+<p>With a flag, code ships switched off. A dashboard decides who gets the feature and when, and the app asks FlagMan at runtime, so turning a feature on or off never needs a deploy.</p>
+</header>
+<section>
+<h2>Turn off a broken feature without a deploy.</h2>
+<p>Switching the flag off changes the answer the app gets on its next <code>/evaluate</code> call, and users fall back to the existing checkout.</p>
+<div id="clip-kill"></div>
+</section>
+<section>
+<h2>The dashboard and the app are separate.</h2>
+<p>The app asks <code>POST /evaluate</code>; FlagMan answers from the current config for that environment.</p>
+<div id="clip-hero"></div>
+</section>
+<section>
+<h2>Release to some users first.</h2>
+<p>Each user has a fixed bucket, <code>CRC32(flagKey:userId) % 100</code>. At 50%, buckets 0–49 get the feature, and a user's answer never changes at random.</p>
+<div id="clip-rollout"></div>
+</section>
+</main>
+<script type="module" src="./src/main.tsx"></script>
+</body>
+</html>
