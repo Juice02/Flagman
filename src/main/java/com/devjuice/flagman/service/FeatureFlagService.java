@@ -9,6 +9,7 @@ import com.devjuice.flagman.entity.Project;
 import com.devjuice.flagman.repository.FeatureFlagConfigRepository;
 import com.devjuice.flagman.repository.FeatureFlagRepository;
 import com.devjuice.flagman.repository.ProjectRepository;
+import com.devjuice.flagman.repository.RuleRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,12 +23,14 @@ public class FeatureFlagService {
     private final FeatureFlagRepository featureFlagRepository;
     private final ProjectRepository projectRepository;
     private final FeatureFlagConfigRepository featureFlagConfigRepository;
+    private final RuleRepository ruleRepository;
 
     public FeatureFlagService(FeatureFlagRepository featureFlagRepository, ProjectRepository projectRepository,
-                              FeatureFlagConfigRepository featureFlagConfigRepository) {
+                              FeatureFlagConfigRepository featureFlagConfigRepository, RuleRepository ruleRepository) {
         this.featureFlagRepository = featureFlagRepository;
         this.projectRepository = projectRepository;
         this.featureFlagConfigRepository = featureFlagConfigRepository;
+        this.ruleRepository = ruleRepository;
     }
 
     public List<FeatureFlag> getAllFeatureFlags() {
@@ -76,7 +79,18 @@ public class FeatureFlagService {
         return toResponse(savedFlag);
     }
 
-    // Public so the config service (and later DELETE) can look up a flag the same way.
+    // Children first (rules, then configs, then the flag) or the foreign keys block the delete.
+    // One transaction, so a failure never leaves a half-deleted flag.
+    @Transactional
+    public void deleteFlag(Integer projectId, String flagKey) {
+        FeatureFlag flag = findFlag(projectId, flagKey);
+        List<FeatureFlagConfig> configs = featureFlagConfigRepository.findByFeatureFlag(flag);
+        ruleRepository.deleteByFeatureFlagConfigIn(configs);
+        featureFlagConfigRepository.deleteAll(configs);
+        featureFlagRepository.delete(flag);
+    }
+
+    // Public so the config service can look up a flag the same way.
     public FeatureFlag findFlag(Integer projectId, String flagKey) {
         return featureFlagRepository.findByProjectAndFlagKey(findProject(projectId), flagKey)
                 .orElseThrow(() -> new ResponseStatusException(

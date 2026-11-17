@@ -59,6 +59,7 @@ The package is `com.devjuice.flagman`, with a conventional layered structure: `c
   - `GET/POST /projects`, `GET /projects/{projectId}`
   - `GET/POST /projects/{projectId}/flags` (POST returns 201, 409 on duplicate `flagKey`, and auto-creates a disabled 0% config per environment)
   - `GET/PATCH /projects/{projectId}/flags/{flagKey}/configs/{environment}` (PATCH changes only the fields sent; `rolloutPercentage` must be 0–100, else 400; environment must be uppercase, else 400)
+  - `DELETE /projects/{projectId}/flags/{flagKey}` (204; deletes its rules and configs first, in one transaction)
   - `GET /featureFlags`
   - `GET /featureFlagConfigs`
   - `GET /flags/{featureId}/configs`

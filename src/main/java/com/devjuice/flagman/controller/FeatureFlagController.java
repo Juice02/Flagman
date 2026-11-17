@@ -32,4 +32,10 @@ public class FeatureFlagController {
         return featureFlagService.createFlag(projectId, request);
     }
 
+    @DeleteMapping("/projects/{projectId}/flags/{flagKey}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteFlag(@PathVariable Integer projectId, @PathVariable String flagKey) {
+        featureFlagService.deleteFlag(projectId, flagKey);
+    }
+
 }
