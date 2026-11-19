@@ -61,12 +61,14 @@ The package is `com.devjuice.flagman`, with a conventional layered structure: `c
   - `GET/PATCH /projects/{projectId}/flags/{flagKey}/configs/{environment}` (PATCH changes only the fields sent; `rolloutPercentage` must be 0–100, else 400; environment must be uppercase, else 400)
   - `DELETE /projects/{projectId}/flags/{flagKey}` (204; deletes its rules and configs first, in one transaction)
   - `POST /evaluate`: the body is `{projectId, flagKey, environment, userId, attributes}` and the response is `{enabled, reason}`. The order is: a disabled flag gives `FLAG_DISABLED`; then every rule must match (AND), else `RULES_NOT_MATCHED`; then the user is in if `CRC32(flagKey + ":" + userId) % 100 < rolloutPercentage` (`IN_ROLLOUT` / `OUT_OF_ROLLOUT`). Changing that formula reshuffles every user. A missing field or a bad environment gives 400; an unknown project, flag or config gives 404.
+  - `GET/POST /projects/{projectId}/flags/{flagKey}/configs/{environment}/rules` (POST returns 201; `attribute` ≤100 chars, `value` ≤255 chars, `operator` one of `EvaluationService.OPERATORS` (case-insensitive, stored uppercase); else 400)
+  - `DELETE /projects/{projectId}/flags/{flagKey}/configs/{environment}/rules/{ruleId}` (204; 404 if the rule isn't on that config)
   - `GET /featureFlags`
   - `GET /featureFlagConfigs`
   - `GET /flags/{featureId}/configs`
   - `GET /rules`
+- Errors: `controller/ApiExceptionHandler` (extends `ResponseEntityExceptionHandler`) returns RFC 9457 problem details `{title, status, detail, instance}`. Services throw `ResponseStatusException` with a readable reason, which becomes `detail`. Unreadable JSON or a wrong field type gives 400 naming the field; a `DataIntegrityViolationException` (e.g. a duplicate-flag race) gives 409.
+- CORS: `config/CorsConfig` allows the origins in `CORS_ALLOWED_ORIGINS` (comma-separated, default `http://localhost:5173`) for GET/POST/PATCH/DELETE. Set it in `.env`; Compose passes it to the app.
 
 Known quirks in the current code:
-- `Rule.ruleId` has no `@GeneratedValue` (harmless until there's a create-rule endpoint; rules only come from `make seed`).
-- `Rule.operator` is a plain String, matched case-insensitively in `EvaluationService`: `EQUALS`, `NOT_EQUALS`, `IN` (comma-separated value), `CONTAINS`. An unknown operator or a missing attribute never matches. The `operator` column is `varchar(10)` and `value` is `varchar(20)`.
-- `FeatureFlagConfigService.getFeatureFlagConfigById` uses a bare `orElseThrow()`, so an unknown ID returns a 500 instead of a 404.
+- `Rule.operator` is a plain String, matched case-insensitively in `EvaluationService`: `EQUALS`, `NOT_EQUALS`, `IN` (comma-separated value), `CONTAINS`. An unknown operator or a missing attribute never matches. `EvaluationService.OPERATORS` and the `matches()` switch must change together.

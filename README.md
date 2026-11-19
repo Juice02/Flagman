@@ -1,16 +1,86 @@
 # FlagMan
 
-A feature flag management service (Spring Boot 4, Java 21, MySQL).
+A self-hosted feature flag service: a REST API (Spring Boot 4, Java 21, MySQL 8.4) with no frontend.
 
-## Why I built this
+Shipping a feature usually means deploying it to everyone at once. Feature flags separate the
+deploy from the release: code ships switched off, then gets turned on per environment, for users
+who match targeting rules, or for a percentage of users, without a redeploy.
 
-I built FlagMan to understand feature flag systems inside and out. Tools like LaunchDarkly, Unleash and Firebase Remote Config already solve this problem well. Building one from scratch is how I'm learning what happens underneath:
-- modeling projects, flags, per-environment configs and targeting rules
-- evaluating a flag for a user
-- making percentage rollouts deterministic
-- keeping evaluation fast and reliable
+FlagMan stores flags per project, keeps a separate config for each environment (`DEV`, `STAGING`,
+`PREPROD`, `PROD`), and answers one question for an app: *is this flag on for this user?*
 
-It's also a self-hosted tool I plan to use in my own future projects.
+## How evaluation works
+
+`POST /evaluate` checks three things in order and stops at the first that fails:
+
+1. **Enabled:** if the flag's config for that environment is off → `FLAG_DISABLED`.
+2. **Rules:** every rule on the config must match the user's attributes (AND) → else `RULES_NOT_MATCHED`.
+   A missing attribute or unknown operator never matches.
+3. **Rollout:** the user is in if `CRC32(flagKey + ":" + userId) % 100 < rolloutPercentage`
+   → `IN_ROLLOUT` or `OUT_OF_ROLLOUT`.
+
+The rollout is deterministic: the same user always gets the same answer for a flag, and raising the
+percentage only adds users. Including the flag key means each flag picks a different set of users.
+
+```sh
+curl -X POST localhost:8081/evaluate -H 'Content-Type: application/json' -d '{
+  "projectId": 6767, "flagKey": "hide-non-fiction", "environment": "PROD",
+  "userId": "u-1", "attributes": {"author": "Tejas", "country": "IN"}
+}'
+# {"enabled":true,"reason":"IN_ROLLOUT"}
+```
+
+## API
+
+Base URL: `http://localhost:8081`. Request and response bodies are JSON. Environment names in paths
+and bodies are uppercase.
+
+| Method | Path | Notes |
+|--------|------|-------|
+| `GET` | `/projects` | List projects |
+| `POST` | `/projects` | Create a project |
+| `GET` | `/projects/{projectId}` | One project |
+| `GET` | `/projects/{projectId}/flags` | Flags in a project |
+| `POST` | `/projects/{projectId}/flags` | Create a flag (`flagKey` required, unique per project). Also creates a disabled 0% config for every environment. 201, or 409 if the key exists |
+| `DELETE` | `/projects/{projectId}/flags/{flagKey}` | Delete a flag with its configs and rules. 204 |
+| `GET` | `/projects/{projectId}/flags/{flagKey}/configs/{environment}` | A flag's config in one environment |
+| `PATCH` | `/projects/{projectId}/flags/{flagKey}/configs/{environment}` | Change `enabled` and/or `rolloutPercentage` (0–100); fields not sent are kept |
+| `GET` | `/projects/{projectId}/flags/{flagKey}/configs/{environment}/rules` | Rules on that config |
+| `POST` | `/projects/{projectId}/flags/{flagKey}/configs/{environment}/rules` | Add a rule. 201 |
+| `DELETE` | `/projects/{projectId}/flags/{flagKey}/configs/{environment}/rules/{ruleId}` | Remove a rule. 204 |
+| `POST` | `/evaluate` | Evaluate a flag for a user (see above) |
+
+A rule compares one user attribute with a value:
+
+```json
+{"attribute": "country", "operator": "IN", "value": "IN,US,GB"}
+```
+
+| Operator | Matches when the attribute… |
+|----------|-----------------------------|
+| `EQUALS` | equals the value |
+| `NOT_EQUALS` | differs from the value |
+| `IN` | equals one of the comma-separated values |
+| `CONTAINS` | contains the value (e.g. `@company.com` in an email) |
+
+Comparisons are case-sensitive; the operator name is not. `attribute` is up to 100 characters,
+`value` up to 255.
+
+### Errors
+
+Errors use the [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem detail format:
+
+```json
+{"title": "Not Found", "status": 404, "detail": "Project 999 not found", "instance": "/projects/999"}
+```
+
+`400` means the request is invalid (missing field, bad value, malformed JSON), `404` that a
+project, flag, config or rule doesn't exist, and `409` that it conflicts with existing data.
+
+### CORS
+
+Browser apps can call the API only from the origins in `CORS_ALLOWED_ORIGINS` in `.env`
+(comma-separated, no trailing slash; default `http://localhost:5173`). Run `make up` after changing it.
 
 ## Docker setup
 
@@ -18,7 +88,7 @@ Runs MySQL 8.4 and the app in Docker. Works the same on Apple Silicon (arm64) an
 
 ### Prerequisites
 
-- **macOS:** Docker Desktop.
+- **macOS:** Docker Desktop (`brew install --cask docker-desktop`), running.
 - **Windows:** Docker Desktop with WSL integration enabled for your distro
   (Settings → Resources → WSL integration), or Docker Engine installed inside WSL2.
 - `make` (preinstalled on macOS; on Ubuntu/WSL: `sudo apt install make`).
@@ -31,7 +101,8 @@ cp .env.example .env   # then change the passwords in .env
 make up                # builds the app, starts MySQL, waits until healthy
 ```
 
-The API is then at http://localhost:8081 (try `curl localhost:8081/projects`).
+The API is then at http://localhost:8081 (try `curl localhost:8081/projects`). `make up` returns
+when the container starts; Spring needs a few more seconds before requests succeed.
 MySQL is reachable from the host on port **3307**.
 
 On first start, MySQL creates the database and app user from `.env`. When the app starts, Flyway
@@ -75,5 +146,5 @@ The schema is managed by [Flyway](https://documentation.red-gate.com/fd). Migrat
 database hasn't seen yet are applied, so existing data is kept.
 
 To change the schema, add a new file with the next version number, e.g.
-`V3__add_flag_tags.sql` (capital `V`, **two** underscores). Then run `make up`.
+`V4__add_flag_tags.sql` (capital `V`, **two** underscores). Then run `make up`.
 Never edit a migration that has already been applied; add a new one instead.

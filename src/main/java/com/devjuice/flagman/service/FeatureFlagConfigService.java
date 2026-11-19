@@ -33,7 +33,8 @@ public class FeatureFlagConfigService {
     }
 
     public List<FeatureFlagConfig> getFeatureFlagConfigById(Integer featureId) {
-        FeatureFlag featureFlag = featureFlagRepository.findById(featureId).orElseThrow();
+        FeatureFlag featureFlag = featureFlagRepository.findById(featureId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Flag " + featureId + " not found"));
         return featureFlagConfigRepository.findByFeatureFlag(featureFlag);
     }
 

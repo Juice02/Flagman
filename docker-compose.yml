@@ -32,6 +32,7 @@ services:
       DB_NAME: ${DB_NAME:-feature_flag_system}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173}
     ports:
       - "${APP_PORT:-8081}:8081"
 

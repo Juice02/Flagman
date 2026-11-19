@@ -47,9 +47,13 @@ public class FeatureFlagService {
     // One transaction: if any config fails to save, the flag is rolled back too.
     @Transactional
     public FlagResponse createFlag(Integer projectId, CreateFlagRequest request) {
+        String flagKey = request.getFlagKey();
+        if (flagKey == null || flagKey.isBlank() || flagKey.length() > 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "flagKey is required and must be at most 100 characters");
+        }
         Project project = findProject(projectId);
 
-        // shortcut: two simultaneous requests can both pass this check; the DB unique constraint then returns a 500, fine until Phase 4 error handling.
+        // Two simultaneous requests can both pass this check; the DB unique constraint then fails and ApiExceptionHandler returns 409.
         if (featureFlagRepository.existsByProjectAndFlagKey(project, request.getFlagKey())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Flag " + request.getFlagKey() + " already exists in project " + projectId);

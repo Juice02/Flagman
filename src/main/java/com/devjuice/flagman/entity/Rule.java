@@ -8,8 +8,9 @@ import jakarta.persistence.*;
 public class Rule {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name="rule_id")
-    private int ruleId;
+    private Integer ruleId;
 
     @ManyToOne
     @JoinColumn(name="config_id")
@@ -24,7 +25,7 @@ public class Rule {
     @Column(name="value")
     private String value;
 
-    public int getRuleId() {
+    public Integer getRuleId() {
         return ruleId;
     }
 
@@ -42,6 +43,22 @@ public class Rule {
 
     public String getValue() {
         return value;
+    }
+
+    public void setFeatureFlagConfig(FeatureFlagConfig featureFlagConfig) {
+        this.featureFlagConfig = featureFlagConfig;
+    }
+
+    public void setAttribute(String attribute) {
+        this.attribute = attribute;
+    }
+
+    public void setOperator(String operator) {
+        this.operator = operator;
+    }
+
+    public void setValue(String value) {
+        this.value = value;
     }
 
 }

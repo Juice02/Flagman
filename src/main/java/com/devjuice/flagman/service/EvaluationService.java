@@ -13,10 +13,14 @@ import org.springframework.web.server.ResponseStatusException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.CRC32;
 
 @Service
 public class EvaluationService {
+
+    // The operators matches() understands; RuleService rejects anything else. Keep the two in sync.
+    static final Set<String> OPERATORS = Set.of("EQUALS", "NOT_EQUALS", "IN", "CONTAINS");
 
     private final FeatureFlagConfigService featureFlagConfigService;
     private final RuleRepository ruleRepository;
