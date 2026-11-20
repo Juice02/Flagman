@@ -28,6 +28,10 @@ public class ProjectService {
     }
 
     public ProjectResponse createProject(CreateProjectRequest request) {
+        String name = request.getName();
+        if (name == null || name.isBlank() || name.length() > 255) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name is required and must be at most 255 characters");
+        }
 
         Project project = new Project();
         project.setName(request.getName());

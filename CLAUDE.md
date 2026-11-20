@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-FlagMan is a feature flag management REST API with no frontend. It uses Spring Boot 4.0.x, Java 21, Maven (via the `./mvnw` wrapper), Spring Data JPA, and MySQL 8.4. It's a solo project developed on both macOS (Apple Silicon) and Windows/WSL2, so Docker setup must stay platform-neutral (no `platform:` overrides).
+FlagMan is a feature flag management REST API plus a web dashboard (`dashboard/`). The API uses Spring Boot 4.0.x, Java 21, Maven (via the `./mvnw` wrapper), Spring Data JPA, and MySQL 8.4. It's a solo project developed on both macOS (Apple Silicon) and Windows/WSL2, so Docker setup must stay platform-neutral (no `platform:` overrides).
 
 ## Commands
 
@@ -21,7 +21,7 @@ make seed        # load mock data (database/DummyData) into a fresh DB
 make reset       # delete the DB volume (prompts); tables recreated by Flyway on next `make up`
 ```
 
-- The API listens on http://localhost:8081, and MySQL is exposed on host port **3307** (it listens on 3306 inside the Compose network).
+- The API listens on http://localhost:8081, the dashboard container on http://localhost:8080, and MySQL is exposed on host port **3307** (it listens on 3306 inside the Compose network).
 - `make up` only waits for the app container to be running. There is no app healthcheck or Actuator, and Spring takes about 6s more before requests succeed.
 - Code changes need `make up` again to rebuild the app image.
 
@@ -72,3 +72,11 @@ The package is `com.devjuice.flagman`, with a conventional layered structure: `c
 
 Known quirks in the current code:
 - `Rule.operator` is a plain String, matched case-insensitively in `EvaluationService`: `EQUALS`, `NOT_EQUALS`, `IN` (comma-separated value), `CONTAINS`. An unknown operator or a missing attribute never matches. `EvaluationService.OPERATORS` and the `matches()` switch must change together.
+
+## Dashboard
+
+- `dashboard/`: Vite + React 19 + TypeScript, no router or UI library. Hash routes (`#/projects/{id}/flags/{key}`) live in `src/routes.ts`; pages are `ProjectsPage`, `ProjectPage`, `FlagPage`; the typed API client is `src/api.ts`, and `useLoad` is in `src/lib.ts`.
+- It calls `/api/*`. `vite.config.ts` (dev, port 5173, target `FLAGMAN_API_URL` or `http://localhost:8081`) and `dashboard/nginx.conf` (Compose service `dashboard`, proxy to `app:8081`) strip `/api` and forward, so the dashboard needs no CORS. CORS is for other browser apps.
+- `npm run build` type-checks (`tsc -b`) and builds; `npx oxlint src` lints.
+- Look: palette `soot-pale-lime` and type pairing `instrument` (Instrument Sans + DM Mono), dealt by the `design-taste-frontend` skill's `start.mjs` and copied as tokens into `src/index.css`. Only its look and motion values are used; its website rules and finish gate don't apply to an admin app. The skill is installed per project in `.claude/skills/` (not committed).
+

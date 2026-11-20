@@ -1,6 +1,7 @@
 # FlagMan
 
-A self-hosted feature flag service: a REST API (Spring Boot 4, Java 21, MySQL 8.4) with no frontend.
+A self-hosted feature flag service: a REST API (Spring Boot 4, Java 21, MySQL 8.4) and a web dashboard
+(React, TypeScript, Vite) for managing projects, flags, environment configs and rules.
 
 Shipping a feature usually means deploying it to everyone at once. Feature flags separate the
 deploy from the release: code ships switched off, then gets turned on per environment, for users
@@ -101,8 +102,9 @@ cp .env.example .env   # then change the passwords in .env
 make up                # builds the app, starts MySQL, waits until healthy
 ```
 
-The API is then at http://localhost:8081 (try `curl localhost:8081/projects`). `make up` returns
-when the container starts; Spring needs a few more seconds before requests succeed.
+The API is then at http://localhost:8081 (try `curl localhost:8081/projects`) and the dashboard at
+http://localhost:8080. `make up` returns when the containers start; Spring needs a few more seconds
+before requests succeed.
 MySQL is reachable from the host on port **3307**.
 
 On first start, MySQL creates the database and app user from `.env`. When the app starts, Flyway
@@ -128,8 +130,8 @@ running, stop it first (`docker compose stop app`) so port 8081 is free.
 
 ### Troubleshooting
 
-- **"port is already allocated" / "address already in use":** something else is using 3307 or 8081.
-  Change `MYSQL_PORT` (and `DB_PORT` to match) or `APP_PORT` in `.env`, then `make up`.
+- **"port is already allocated" / "address already in use":** something else is using 3307, 8081 or 8080.
+  Change `MYSQL_PORT` (and `DB_PORT` to match), `APP_PORT` or `DASHBOARD_PORT` in `.env`, then `make up`.
 - **"permission denied … docker.sock" (Linux/WSL with Docker Engine):** add yourself to the docker group with
   `sudo usermod -aG docker $USER`, then run `wsl --shutdown` from Windows and reopen the terminal.
 - **"docker: command not found" or "Cannot connect to the Docker daemon" in WSL with Docker Desktop:**
@@ -138,6 +140,23 @@ running, stop it first (`docker compose stop app`) so port 8081 is free.
   is first created. Run `make reset`, then `make up` (and `make seed` if you want mock data back).
 - **App won't start with a Flyway "checksum mismatch" error:** a migration that already ran was edited.
   Undo the edit and put the change in a new migration file instead.
+
+## Dashboard
+
+`dashboard/` is a React + TypeScript app built with Vite. It lists projects and their flags, and per
+environment switches a flag on or off, sets its rollout percentage and edits its rules.
+
+It calls the API under `/api`: the Vite dev server and the dashboard container (nginx) both forward
+`/api/*` to the API, so the browser stays on one origin and the dashboard needs no CORS setting.
+
+- **In Docker:** `make up` builds and serves it at http://localhost:8080 (`DASHBOARD_PORT` in `.env`).
+- **While working on it** (Node 22+): start the API with `make up`, then
+  ```sh
+  cd dashboard
+  npm install
+  npm run dev        # http://localhost:5173, reloads on save
+  ```
+  Set `FLAGMAN_API_URL` to point the dev proxy at an API other than `http://localhost:8081`.
 
 ## Database migrations
 

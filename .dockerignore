@@ -16,3 +16,6 @@ Dockerfile
 Makefile
 README.md
 HELP.md
+dashboard/
+.claude/
+skills-lock.json
