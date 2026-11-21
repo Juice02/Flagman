@@ -1,5 +1,6 @@
 package com.devjuice.flagman.service;
 
+import com.devjuice.flagman.stream.FlagChangeNotifier;
 import com.devjuice.flagman.dto.config.request.UpdateConfigRequest;
 import com.devjuice.flagman.dto.config.response.FlagConfigResponse;
 import com.devjuice.flagman.entity.Environment;
@@ -9,6 +10,7 @@ import com.devjuice.flagman.repository.FeatureFlagConfigRepository;
 import com.devjuice.flagman.repository.FeatureFlagRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -20,12 +22,14 @@ public class FeatureFlagConfigService {
     private final FeatureFlagConfigRepository featureFlagConfigRepository;
     private final FeatureFlagRepository featureFlagRepository;
     private final FeatureFlagService featureFlagService;
+    private final FlagChangeNotifier changes;
 
     public FeatureFlagConfigService(FeatureFlagConfigRepository featureFlagConfigRepository, FeatureFlagRepository featureFlagRepository,
-                                    FeatureFlagService featureFlagService) {
+                                    FeatureFlagService featureFlagService, FlagChangeNotifier changes) {
         this.featureFlagConfigRepository = featureFlagConfigRepository;
         this.featureFlagRepository = featureFlagRepository;
         this.featureFlagService = featureFlagService;
+        this.changes = changes;
     }
 
     public List<FeatureFlagConfig> getAllFeatureFlagConfig() {
@@ -42,6 +46,7 @@ public class FeatureFlagConfigService {
         return toResponse(findConfig(projectId, flagKey, environment));
     }
 
+    @Transactional
     public FlagConfigResponse updateConfig(Integer projectId, String flagKey, Environment environment,
                                            UpdateConfigRequest request) {
         // PATCH: only the fields sent are changed; a missing field keeps its current value.
@@ -58,8 +63,9 @@ public class FeatureFlagConfigService {
             config.setRolloutPercent(rollout);
         }
         config.setUpdatedOn(LocalDateTime.now());
-
-        return toResponse(featureFlagConfigRepository.save(config));
+        FeatureFlagConfig saved = featureFlagConfigRepository.save(config);
+        changes.changed(projectId);
+        return toResponse(saved);
     }
 
     // Public so the evaluation service can look up a config the same way.

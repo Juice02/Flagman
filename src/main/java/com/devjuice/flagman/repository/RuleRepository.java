@@ -12,4 +12,6 @@ public interface RuleRepository extends JpaRepository<Rule,Integer> {
 
     void deleteByFeatureFlagConfigIn(List<FeatureFlagConfig> configs);
 
+    List<Rule> findByFeatureFlagConfigIn(List<FeatureFlagConfig> configs);
+
 }

@@ -33,7 +33,7 @@ Running on the host (requires JDK 21, which is not installed in the WSL environm
 ./mvnw test -Dtest=FlagManApplicationTests#contextLoads
 ```
 
-The only test is a `@SpringBootTest` context-load test. It needs a reachable MySQL (`make db`) and `.env`, because it boots the full JPA context.
+There are two tests. `FlagManApplicationTests` is a `@SpringBootTest` context-load test; it needs a reachable MySQL (`make db`) and `.env`, because it boots the full JPA context. `EvaluatorTest` runs `src/test/resources/evaluation-cases.json` against `Evaluator` and needs no database: `./mvnw test -Dtest=EvaluatorTest`. Without JDK 21 on the host, run it in the build image: `docker run --rm -v "$PWD":/src -v flagman-m2:/root/.m2 -w /src eclipse-temurin:21.0.13_9-jdk-noble ./mvnw -B -q test -Dtest=EvaluatorTest`.
 
 ## Configuration
 
@@ -61,17 +61,21 @@ The package is `com.devjuice.flagman`, with a conventional layered structure: `c
   - `GET/PATCH /projects/{projectId}/flags/{flagKey}/configs/{environment}` (PATCH changes only the fields sent; `rolloutPercentage` must be 0–100, else 400; environment must be uppercase, else 400)
   - `DELETE /projects/{projectId}/flags/{flagKey}` (204; deletes its rules and configs first, in one transaction)
   - `POST /evaluate`: the body is `{projectId, flagKey, environment, userId, attributes}` and the response is `{enabled, reason}`. The order is: a disabled flag gives `FLAG_DISABLED`; then every rule must match (AND), else `RULES_NOT_MATCHED`; then the user is in if `CRC32(flagKey + ":" + userId) % 100 < rolloutPercentage` (`IN_ROLLOUT` / `OUT_OF_ROLLOUT`). Changing that formula reshuffles every user. A missing field or a bad environment gives 400; an unknown project, flag or config gives 404.
-  - `GET/POST /projects/{projectId}/flags/{flagKey}/configs/{environment}/rules` (POST returns 201; `attribute` ≤100 chars, `value` ≤255 chars, `operator` one of `EvaluationService.OPERATORS` (case-insensitive, stored uppercase); else 400)
+  - `GET/POST /projects/{projectId}/flags/{flagKey}/configs/{environment}/rules` (POST returns 201; `attribute` ≤100 chars, `value` ≤255 chars, `operator` one of `Evaluator.OPERATORS` (case-insensitive, stored uppercase); else 400)
   - `DELETE /projects/{projectId}/flags/{flagKey}/configs/{environment}/rules/{ruleId}` (204; 404 if the rule isn't on that config)
   - `GET /featureFlags`
   - `GET /featureFlagConfigs`
   - `GET /flags/{featureId}/configs`
   - `GET /rules`
+  - `GET /projects/{projectId}/environments/{environment}/snapshot`: every flag in that environment as `FlagState` (`flagKey, enabled, rolloutPercentage, rules`), plus the project's `revision`. 404 for an unknown project.
+  - `GET /projects/{projectId}/environments/{environment}/stream`: the same snapshot over Server-Sent Events (`SseEmitter`), on connect and after every committed change, with a `: ping` comment every 25 s.
+- Evaluation: `service/Evaluator` is pure (no database) and is the single implementation; `EvaluationService` only loads the config and rules and calls it. Browser clients (flagman-demo `src/evaluate.ts`) run a copy, and both are tested against `evaluation-cases.json`, so a change to the evaluation order, an operator or the bucket formula needs a new case and the same change in the copy.
+- Live updates (`stream/`): every write to a flag, config or rule is `@Transactional` and calls `FlagChangeNotifier.changed(projectId)`, which bumps `projects.revision` (V4 migration) and publishes `FlagsChanged`. `StreamHub` listens with `@TransactionalEventListener(AFTER_COMMIT)`, builds one snapshot per subscribed environment with `SnapshotService` (three queries, `REQUIRES_NEW` because the original transaction has finished) and sends it to every open emitter. A new write path must call the notifier, or streams miss the change. Open emitters live in memory, so this only works with one app instance.
 - Errors: `controller/ApiExceptionHandler` (extends `ResponseEntityExceptionHandler`) returns RFC 9457 problem details `{title, status, detail, instance}`. Services throw `ResponseStatusException` with a readable reason, which becomes `detail`. Unreadable JSON or a wrong field type gives 400 naming the field; a `DataIntegrityViolationException` (e.g. a duplicate-flag race) gives 409.
 - CORS: `config/CorsConfig` allows the origins in `CORS_ALLOWED_ORIGINS` (comma-separated, default `http://localhost:5173`) for GET/POST/PATCH/DELETE. Set it in `.env`; Compose passes it to the app.
 
 Known quirks in the current code:
-- `Rule.operator` is a plain String, matched case-insensitively in `EvaluationService`: `EQUALS`, `NOT_EQUALS`, `IN` (comma-separated value), `CONTAINS`. An unknown operator or a missing attribute never matches. `EvaluationService.OPERATORS` and the `matches()` switch must change together.
+- `Rule.operator` is a plain String, matched case-insensitively in `Evaluator`: `EQUALS`, `NOT_EQUALS`, `IN` (comma-separated value, each part trimmed), `CONTAINS`. An unknown operator or a missing attribute never matches. `Evaluator.OPERATORS` and the `matches()` switch must change together.
 
 ## Dashboard
 

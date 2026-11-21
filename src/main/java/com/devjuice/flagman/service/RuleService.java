@@ -1,5 +1,6 @@
 package com.devjuice.flagman.service;
 
+import com.devjuice.flagman.stream.FlagChangeNotifier;
 
 import com.devjuice.flagman.dto.rule.request.CreateRuleRequest;
 import com.devjuice.flagman.dto.rule.response.RuleResponse;
@@ -9,6 +10,7 @@ import com.devjuice.flagman.entity.Rule;
 import com.devjuice.flagman.repository.RuleRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -18,10 +20,13 @@ public class RuleService {
 
     private final RuleRepository ruleRepository;
     private final FeatureFlagConfigService featureFlagConfigService;
+    private final FlagChangeNotifier changes;
 
-    public RuleService(RuleRepository ruleRepository, FeatureFlagConfigService featureFlagConfigService) {
+    public RuleService(RuleRepository ruleRepository, FeatureFlagConfigService featureFlagConfigService,
+                       FlagChangeNotifier changes) {
         this.ruleRepository = ruleRepository;
         this.featureFlagConfigService = featureFlagConfigService;
+        this.changes = changes;
     }
 
     public List<Rule> getAllRules() {
@@ -33,12 +38,13 @@ public class RuleService {
         return ruleRepository.findByFeatureFlagConfig(config).stream().map(this::toResponse).toList();
     }
 
+    @Transactional
     public RuleResponse createRule(Integer projectId, String flagKey, Environment environment, CreateRuleRequest request) {
         // Limits match the rules table columns (V3 migration), so a long value is a 400, not a database error.
         requireText("attribute", request.getAttribute(), 100);
         requireText("value", request.getValue(), 255);
         String operator = request.getOperator() == null ? null : request.getOperator().toUpperCase();
-        if (!EvaluationService.OPERATORS.contains(operator)) {
+        if (!Evaluator.OPERATORS.contains(operator)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "operator must be one of EQUALS, NOT_EQUALS, IN, CONTAINS");
         }
@@ -48,9 +54,12 @@ public class RuleService {
         rule.setAttribute(request.getAttribute());
         rule.setOperator(operator);
         rule.setValue(request.getValue());
-        return toResponse(ruleRepository.save(rule));
+        Rule saved = ruleRepository.save(rule);
+        changes.changed(projectId);
+        return toResponse(saved);
     }
 
+    @Transactional
     public void deleteRule(Integer projectId, String flagKey, Environment environment, Integer ruleId) {
         FeatureFlagConfig config = featureFlagConfigService.findConfig(projectId, flagKey, environment);
         // The rule must belong to this config, so a URL can't delete another flag's rule by ID.
@@ -59,6 +68,7 @@ public class RuleService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Rule " + ruleId + " not found on " + environment + " config of flag " + flagKey));
         ruleRepository.delete(rule);
+        changes.changed(projectId);
     }
 
     private void requireText(String field, String value, int maxLength) {

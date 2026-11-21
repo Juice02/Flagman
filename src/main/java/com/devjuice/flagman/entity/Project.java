@@ -18,6 +18,10 @@ public class Project {
     @Column(name="created_on")
     private LocalDateTime createdOn;
 
+    // Bumped by ProjectRepository.bumpRevision on every flag, config or rule change.
+    @Column(name="revision", insertable = false, updatable = false)
+    private long revision;
+
     public int getProjectId() {
         return projectId;
     }
@@ -28,6 +32,10 @@ public class Project {
 
     public LocalDateTime getCreatedOn() {
         return createdOn;
+    }
+
+    public long getRevision() {
+        return revision;
     }
 
     public void setName(String name) {

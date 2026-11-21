@@ -50,6 +50,8 @@ and bodies are uppercase.
 | `POST` | `/projects/{projectId}/flags/{flagKey}/configs/{environment}/rules` | Add a rule. 201 |
 | `DELETE` | `/projects/{projectId}/flags/{flagKey}/configs/{environment}/rules/{ruleId}` | Remove a rule. 204 |
 | `POST` | `/evaluate` | Evaluate a flag for a user (see above) |
+| `GET` | `/projects/{projectId}/environments/{environment}/snapshot` | Every flag in that environment with its rollout and rules, plus the project's `revision` |
+| `GET` | `/projects/{projectId}/environments/{environment}/stream` | The same snapshot as a live stream (Server-Sent Events), sent on connect and after every change |
 
 A rule compares one user attribute with a value:
 
@@ -66,6 +68,30 @@ A rule compares one user attribute with a value:
 
 Comparisons are case-sensitive; the operator name is not. `attribute` is up to 100 characters,
 `value` up to 255.
+
+### Live updates
+
+Instead of calling `/evaluate` for every user and flag, a client can open the stream once and evaluate
+flags itself:
+
+```sh
+curl -N localhost:8081/projects/6767/environments/DEV/stream
+# event:snapshot
+# id:12
+# data:{"projectId":6767,"environment":"DEV","revision":12,"flags":[{"flagKey":"dark-mode","enabled":true,"rolloutPercentage":50,"rules":[...]}]}
+```
+
+- A `snapshot` event arrives when the stream opens and again after each change to the project's flags,
+  configs or rules has been committed. A rolled-back change is never sent.
+- `revision` goes up by one with every change, so a client can ignore an older snapshot that arrives
+  late.
+- A `: ping` comment every 25 s keeps idle connections open through proxies.
+- To evaluate, use the same order and rules as `/evaluate` (see [How evaluation works](#how-evaluation-works)).
+  `src/test/resources/evaluation-cases.json` lists inputs and expected answers; a client should pass
+  all of them. `flagman-demo` has a TypeScript version that does.
+- Snapshots include every rule's value. Don't put anything a browser user shouldn't read into rules
+  of a project that browsers stream.
+- Open streams live in the app's memory, so this works with one app instance.
 
 ### Errors
 

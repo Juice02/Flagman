@@ -1,5 +1,6 @@
 package com.devjuice.flagman.service;
 
+import com.devjuice.flagman.stream.FlagChangeNotifier;
 import com.devjuice.flagman.dto.flag.request.CreateFlagRequest;
 import com.devjuice.flagman.dto.flag.response.FlagResponse;
 import com.devjuice.flagman.entity.Environment;
@@ -24,13 +25,16 @@ public class FeatureFlagService {
     private final ProjectRepository projectRepository;
     private final FeatureFlagConfigRepository featureFlagConfigRepository;
     private final RuleRepository ruleRepository;
+    private final FlagChangeNotifier changes;
 
     public FeatureFlagService(FeatureFlagRepository featureFlagRepository, ProjectRepository projectRepository,
-                              FeatureFlagConfigRepository featureFlagConfigRepository, RuleRepository ruleRepository) {
+                              FeatureFlagConfigRepository featureFlagConfigRepository, RuleRepository ruleRepository,
+                              FlagChangeNotifier changes) {
         this.featureFlagRepository = featureFlagRepository;
         this.projectRepository = projectRepository;
         this.featureFlagConfigRepository = featureFlagConfigRepository;
         this.ruleRepository = ruleRepository;
+        this.changes = changes;
     }
 
     public List<FeatureFlag> getAllFeatureFlags() {
@@ -79,7 +83,7 @@ public class FeatureFlagService {
             config.setCreatedOn(now);
             featureFlagConfigRepository.save(config);
         }
-
+        changes.changed(projectId);
         return toResponse(savedFlag);
     }
 
@@ -92,6 +96,7 @@ public class FeatureFlagService {
         ruleRepository.deleteByFeatureFlagConfigIn(configs);
         featureFlagConfigRepository.deleteAll(configs);
         featureFlagRepository.delete(flag);
+        changes.changed(projectId);
     }
 
     // Public so the config service can look up a flag the same way.

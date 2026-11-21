@@ -2,25 +2,18 @@ package com.devjuice.flagman.service;
 
 import com.devjuice.flagman.dto.evaluate.request.EvaluateRequest;
 import com.devjuice.flagman.dto.evaluate.response.EvaluateResponse;
-import com.devjuice.flagman.dto.evaluate.response.EvaluationReason;
+import com.devjuice.flagman.dto.snapshot.response.FlagState;
 import com.devjuice.flagman.entity.FeatureFlagConfig;
-import com.devjuice.flagman.entity.Rule;
 import com.devjuice.flagman.repository.RuleRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Map;
-import java.util.Set;
-import java.util.zip.CRC32;
 
+// POST /evaluate: loads one flag's config and rules, then runs the shared Evaluator.
 @Service
 public class EvaluationService {
-
-    // The operators matches() understands; RuleService rejects anything else. Keep the two in sync.
-    static final Set<String> OPERATORS = Set.of("EQUALS", "NOT_EQUALS", "IN", "CONTAINS");
 
     private final FeatureFlagConfigService featureFlagConfigService;
     private final RuleRepository ruleRepository;
@@ -30,7 +23,6 @@ public class EvaluationService {
         this.ruleRepository = ruleRepository;
     }
 
-    // Order: flag disabled -> rules (all must match) -> percentage rollout among the users who matched.
     public EvaluateResponse evaluate(EvaluateRequest request) {
         if (request.getProjectId() == null || isBlank(request.getFlagKey())
                 || request.getEnvironment() == null || isBlank(request.getUserId())) {
@@ -40,47 +32,12 @@ public class EvaluationService {
 
         FeatureFlagConfig config = featureFlagConfigService.findConfig(
                 request.getProjectId(), request.getFlagKey(), request.getEnvironment());
-
-        if (!Boolean.TRUE.equals(config.getEnabled())) {
-            return new EvaluateResponse(false, EvaluationReason.FLAG_DISABLED);
-        }
-
         Map<String, String> attributes = request.getAttributes() == null ? Map.of() : request.getAttributes();
-        for (Rule rule : ruleRepository.findByFeatureFlagConfig(config)) {
-            if (!matches(rule, attributes.get(rule.getAttribute()))) {
-                return new EvaluateResponse(false, EvaluationReason.RULES_NOT_MATCHED);
-            }
-        }
-
-        int rollout = config.getRolloutPercent() == null ? 0 : config.getRolloutPercent();
-        boolean inRollout = bucket(request.getFlagKey(), request.getUserId()) < rollout;
-        return new EvaluateResponse(inRollout, inRollout ? EvaluationReason.IN_ROLLOUT : EvaluationReason.OUT_OF_ROLLOUT);
-    }
-
-    // The same user and flag always land in the same 0-99 bucket; the flag key keeps buckets independent per flag.
-    private int bucket(String flagKey, String userId) {
-        CRC32 crc = new CRC32();
-        crc.update((flagKey + ":" + userId).getBytes(StandardCharsets.UTF_8));
-        return (int) (crc.getValue() % 100);
-    }
-
-    // Fails closed: a missing attribute or an unknown operator never matches.
-    private boolean matches(Rule rule, String actual) {
-        String expected = rule.getValue();
-        if (actual == null || expected == null || rule.getOperator() == null) {
-            return false;
-        }
-        return switch (rule.getOperator().toUpperCase()) {
-            case "EQUALS" -> actual.equals(expected);
-            case "NOT_EQUALS" -> !actual.equals(expected);
-            case "IN" -> Arrays.stream(expected.split(",")).map(String::trim).anyMatch(actual::equals);
-            case "CONTAINS" -> actual.contains(expected);
-            default -> false;
-        };
+        return Evaluator.evaluate(
+                FlagState.of(config, ruleRepository.findByFeatureFlagConfig(config)), request.getUserId(), attributes);
     }
 
     private boolean isBlank(String value) {
         return value == null || value.isBlank();
     }
-
 }
