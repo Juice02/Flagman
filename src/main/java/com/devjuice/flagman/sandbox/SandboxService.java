@@ -57,10 +57,12 @@ public class SandboxService {
             RANDOM.nextBytes(secret);
             String token = Base64.getUrlEncoder().withoutPadding().encodeToString(secret);
 
+            // Named after its ID, never after the token: project names are readable without a key.
             Project project = new Project();
-            project.setName("Sandbox " + token.substring(0, 8));
+            project.setName("Sandbox");
             project.setCreatedOn(LocalDateTime.now());
             int projectId = projects.save(project).getProjectId();
+            project.setName("Sandbox " + projectId); // saved with the transaction
             for (String flagKey : props.flags()) {
                 CreateFlagRequest request = new CreateFlagRequest();
                 request.setFlagKey(flagKey);
