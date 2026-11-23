@@ -93,6 +93,31 @@ curl -N localhost:8081/projects/6767/environments/DEV/stream
   of a project that browsers stream.
 - Open streams live in the app's memory, so this works with one app instance.
 
+### Access control and sandboxes
+
+FlagMan has no user accounts. When `FLAGMAN_ADMIN_KEY` is set, every change (create, update, delete)
+needs that key in an `X-Admin-Key` header; reads, `/evaluate` and the stream stay open. Without the
+variable, as in local development, changes need no key. The dashboard has a field in its top bar for
+the key, kept for the browser tab only.
+
+`POST /sandboxes` (no key) creates a **sandbox**: a private copy of the demo flags (`dark-mode`,
+`hide-non-fiction`) for one visitor, and returns `{projectId, environment, token}`. With that token in
+an `X-Sandbox-Token` header, the visitor can make only the preset changes on their own sandbox:
+
+- switch those flags on or off and set their rollout, in `DEV`;
+- add or remove rules from the allowlist in `application.properties` (`flagman.sandbox.*`).
+
+Anything else is refused (`401` without a key, `403` with a token outside its limits). FlagMan stores
+only a SHA-256 hash of each token. Sandboxes unused for 24 hours are deleted, with their flags; at most
+5,000 exist at once (`FLAGMAN_SANDBOX_MAX`). Sandboxes don't appear in `GET /projects`.
+
+Per-IP limits (in memory, so they reset on restart and assume one instance): 60 changes a minute,
+10 new sandboxes an hour, 300 `/evaluate` calls a minute, 30 new streams a minute, and 10 open streams
+(`FLAGMAN_MAX_STREAMS_PER_IP`; Compose raises it locally because Docker Desktop keeps closed connections
+open). Ten wrong admin keys from one IP lock that IP out of admin requests for 15 minutes.
+Behind a proxy, set `FLAGMAN_TRUSTED_PROXIES` to the number of proxies that append to
+`X-Forwarded-For`, then check `GET /admin/client-ip` (admin key) shows your own address.
+
 ### Errors
 
 Errors use the [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem detail format:
@@ -108,6 +133,23 @@ project, flag, config or rule doesn't exist, and `409` that it conflicts with ex
 
 Browser apps can call the API only from the origins in `CORS_ALLOWED_ORIGINS` in `.env`
 (comma-separated, no trailing slash; default `http://localhost:5173`). Run `make up` after changing it.
+
+## Hosting on Render (free plan)
+
+`render.yaml` describes three services: the API (Docker, free web service, sleeps after 15 minutes
+idle), the dashboard and [flagman-demo](https://github.com/Juice02/flagman-demo) (free static sites).
+The database is TiDB Cloud's free tier, which speaks the MySQL protocol. It has not been deployed yet,
+so expect to adjust it on the first run.
+
+1. Create a TiDB Cloud cluster and a database; note its host, user and password.
+2. In Render, create a Blueprint from this repository and give Render access to both repositories.
+   Fill in the values it asks for: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`,
+   `CORS_ALLOWED_ORIGINS` (the demo's and dashboard's `https://` addresses) and `VITE_FLAGMAN_API_URL`
+   (the API's `https://` address) for both static sites.
+3. After the first deploy: copy `FLAGMAN_ADMIN_KEY` from the API service's Environment tab into the
+   dashboard's key field, and open `GET /admin/client-ip` with the key to check the client address.
+
+Flyway creates the tables on first start. No seed step is needed: the demo creates a sandbox per visitor.
 
 ## Docker setup
 

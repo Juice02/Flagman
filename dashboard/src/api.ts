@@ -1,5 +1,17 @@
 // Thin client for the FlagMan API. Requests go to /api, which the Vite dev server (vite.config.ts)
 // and nginx (nginx.conf) forward to the API, so the browser never makes a cross-origin call.
+// When the dashboard is hosted apart from the API, VITE_FLAGMAN_API_URL is the API's address instead.
+const BASE: string = import.meta.env.VITE_FLAGMAN_API_URL || '/api'
+
+// The admin key every change needs once FLAGMAN_ADMIN_KEY is set on the server. Typed in by the
+// user (AdminKey in ui.tsx) and kept for this browser tab only, never built into the code.
+const KEY_STORAGE = 'flagman-admin-key'
+export function readAdminKey(): string | null {
+  try { return sessionStorage.getItem(KEY_STORAGE) } catch { return null }
+}
+export function saveAdminKey(key: string | null) {
+  try { if (key) sessionStorage.setItem(KEY_STORAGE, key); else sessionStorage.removeItem(KEY_STORAGE) } catch { /* storage blocked */ }
+}
 
 export const ENVIRONMENTS = ['DEV', 'STAGING', 'PREPROD', 'PROD'] as const
 export type Environment = (typeof ENVIRONMENTS)[number]
@@ -18,9 +30,10 @@ export class ApiError extends Error {}
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response
   try {
-    res = await fetch('/api' + path, {
+    const key = readAdminKey()
+    res = await fetch(BASE + path, {
       ...init,
-      headers: init?.body ? { 'Content-Type': 'application/json' } : undefined,
+      headers: { ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...(key ? { 'X-Admin-Key': key } : {}) },
     })
   } catch {
     throw new ApiError('Cannot reach the FlagMan API. Is it running (make up)?')

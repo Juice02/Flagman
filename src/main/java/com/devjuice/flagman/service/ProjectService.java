@@ -21,7 +21,7 @@ public class ProjectService {
 
 
     public List<ProjectResponse> getAllProjects() {
-        return projectRepository.findAll()
+        return projectRepository.findAllExceptSandboxes()
                 .stream()
                 .map(this::toResponse)
                 .toList();

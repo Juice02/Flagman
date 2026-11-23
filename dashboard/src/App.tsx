@@ -3,6 +3,7 @@ import { FlagPage } from './FlagPage'
 import { ProjectPage } from './ProjectPage'
 import { ProjectsPage } from './ProjectsPage'
 import { parseRoute } from './routes'
+import { AdminKey } from './ui'
 
 export default function App() {
   const [route, setRoute] = useState(() => parseRoute(location.hash))
@@ -25,7 +26,7 @@ export default function App() {
             <span className="brand__mark" aria-hidden="true" />
             FlagMan
           </a>
-          <span className="topbar__note">Feature flags</span>
+          <AdminKey />
         </div>
       </header>
       <main id="main" className="wrap">

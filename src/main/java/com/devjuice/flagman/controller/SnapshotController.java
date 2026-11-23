@@ -2,6 +2,9 @@ package com.devjuice.flagman.controller;
 
 import com.devjuice.flagman.dto.snapshot.response.Snapshot;
 import com.devjuice.flagman.entity.Environment;
+import com.devjuice.flagman.sandbox.SandboxService;
+import com.devjuice.flagman.security.ClientIp;
+import jakarta.servlet.http.HttpServletRequest;
 import com.devjuice.flagman.stream.SnapshotService;
 import com.devjuice.flagman.stream.StreamHub;
 import org.springframework.http.MediaType;
@@ -16,10 +19,14 @@ public class SnapshotController {
 
     private final SnapshotService snapshots;
     private final StreamHub streams;
+    private final SandboxService sandboxes;
+    private final ClientIp clientIp;
 
-    public SnapshotController(SnapshotService snapshots, StreamHub streams) {
+    public SnapshotController(SnapshotService snapshots, StreamHub streams, SandboxService sandboxes, ClientIp clientIp) {
         this.snapshots = snapshots;
         this.streams = streams;
+        this.sandboxes = sandboxes;
+        this.clientIp = clientIp;
     }
 
     @GetMapping("/projects/{projectId}/environments/{environment}/snapshot")
@@ -28,7 +35,10 @@ public class SnapshotController {
     }
 
     @GetMapping(path = "/projects/{projectId}/environments/{environment}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream(@PathVariable Integer projectId, @PathVariable Environment environment) {
-        return streams.subscribe(projectId, environment);
+    public SseEmitter stream(@PathVariable Integer projectId, @PathVariable Environment environment,
+                             HttpServletRequest request) {
+        SseEmitter emitter = streams.subscribe(projectId, environment, clientIp.of(request));
+        sandboxes.touch(projectId); // a visitor watching their sandbox keeps it from being cleaned up
+        return emitter;
     }
 }

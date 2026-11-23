@@ -1,0 +1,80 @@
+# Render Blueprint: the API, the dashboard and the demo on Render's free plan, with the database on
+# TiDB Cloud (MySQL-compatible). Values marked sync: false are entered in Render's dashboard when the
+# Blueprint is created; they are never stored in this file.
+# Not yet tested on Render: check every service after the first deploy (see README, "Hosting").
+services:
+  - type: web
+    name: flagman-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: "8081"
+      # Fit the JVM into the free plan's 512 MB.
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=60 -XX:+UseSerialGC -Xss512k
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "4000"
+      - key: DB_NAME
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # TiDB Cloud only accepts encrypted connections.
+      - key: DB_PARAMS
+        value: ?sslMode=VERIFY_IDENTITY
+      # A random 256-bit key, made by Render. Copy it from the service's Environment tab into the dashboard.
+      - key: FLAGMAN_ADMIN_KEY
+        generateValue: true
+      # Render's proxy appends the visitor's address to X-Forwarded-For. Verify with GET /admin/client-ip.
+      - key: FLAGMAN_TRUSTED_PROXIES
+        value: "1"
+      # The demo's and dashboard's https:// addresses, comma-separated, no trailing slash.
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+  - type: web
+    name: flagman-dashboard
+    runtime: static
+    rootDir: dashboard
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      # The API's https:// address (flagman-api's URL).
+      - key: VITE_FLAGMAN_API_URL
+        sync: false
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: frame-ancestors 'none'
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer
+
+  - type: web
+    name: flagman-demo
+    runtime: static
+    repo: https://github.com/Juice02/flagman-demo
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_FLAGMAN_API_URL
+        sync: false
+    headers:
+      # The stage embeds its own app.html; nothing else may frame the demo.
+      - path: /*
+        name: Content-Security-Policy
+        value: frame-ancestors 'self'
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: no-referrer

@@ -99,6 +99,14 @@ public class FeatureFlagService {
         changes.changed(projectId);
     }
 
+    // For deleting a sandbox: like deleteFlag, but no error if the flag is already gone.
+    @Transactional
+    public void deleteFlagIfPresent(Integer projectId, String flagKey) {
+        if (featureFlagRepository.findByProjectAndFlagKey(findProject(projectId), flagKey).isPresent()) {
+            deleteFlag(projectId, flagKey);
+        }
+    }
+
     // Public so the config service can look up a flag the same way.
     public FeatureFlag findFlag(Integer projectId, String flagKey) {
         return featureFlagRepository.findByProjectAndFlagKey(findProject(projectId), flagKey)

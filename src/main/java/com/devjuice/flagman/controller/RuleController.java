@@ -1,5 +1,11 @@
 package com.devjuice.flagman.controller;
 
+import com.devjuice.flagman.sandbox.Sandbox;
+import com.devjuice.flagman.sandbox.SandboxProperties;
+import com.devjuice.flagman.security.AccessInterceptor;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.devjuice.flagman.dto.rule.request.CreateRuleRequest;
 import com.devjuice.flagman.dto.rule.response.RuleResponse;
 import com.devjuice.flagman.entity.Environment;
@@ -15,7 +21,12 @@ public class RuleController {
 
     private final RuleService ruleService;
 
-    public RuleController(RuleService ruleService) { this.ruleService = ruleService; }
+    private final SandboxProperties sandboxProperties;
+
+    public RuleController(RuleService ruleService, SandboxProperties sandboxProperties) {
+        this.ruleService = ruleService;
+        this.sandboxProperties = sandboxProperties;
+    }
 
     @GetMapping("/rules")
     public List<Rule> getAllRules () {
@@ -31,7 +42,12 @@ public class RuleController {
     @PostMapping("/projects/{projectId}/flags/{flagKey}/configs/{environment}/rules")
     @ResponseStatus(HttpStatus.CREATED)
     public RuleResponse createRule(@PathVariable Integer projectId, @PathVariable String flagKey,
-                                   @PathVariable Environment environment, @RequestBody CreateRuleRequest request) {
+                                   @PathVariable Environment environment, @RequestBody CreateRuleRequest request,
+                                   @RequestAttribute(name = AccessInterceptor.SANDBOX, required = false) Sandbox sandbox) {
+        // A sandbox token may only add the preset rules (AccessInterceptor already checked project, environment and flag).
+        if (sandbox != null && !sandboxProperties.allowsRule(request.getAttribute(), request.getOperator(), request.getValue())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the preset rules can be added to a sandbox.");
+        }
         return ruleService.createRule(projectId, flagKey, environment, request);
     }
 
