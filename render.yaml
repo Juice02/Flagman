@@ -7,6 +7,9 @@ services:
     name: flagman-api
     runtime: docker
     plan: free
+    # Same region as the TiDB Cloud database (AWS ap-southeast-1). Each change makes about ten database
+    # calls, so a database in another region adds seconds; from India to Singapore a change took ~1.5 s.
+    region: singapore
     dockerfilePath: ./Dockerfile
     envVars:
       - key: PORT

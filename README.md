@@ -141,7 +141,8 @@ idle), the dashboard and [flagman-demo](https://github.com/Juice02/flagman-demo)
 The database is TiDB Cloud's free tier, which speaks the MySQL protocol. It has not been deployed yet,
 so expect to adjust it on the first run.
 
-1. Create a TiDB Cloud cluster and a database; note its host, user and password.
+1. Create a TiDB Cloud cluster in AWS Singapore (ap-southeast-1), the region `render.yaml` uses for the
+   API, and a database (`CREATE DATABASE flagman;`); note its host, user and password.
 2. In Render, create a Blueprint from this repository and give Render access to both repositories.
    Fill in the values it asks for: `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`,
    `CORS_ALLOWED_ORIGINS` (the demo's and dashboard's `https://` addresses) and `VITE_FLAGMAN_API_URL`
