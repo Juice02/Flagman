@@ -63,7 +63,10 @@ public class AccessInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         String method = request.getMethod();
-        String path = request.getRequestURI();
+        // The route Spring matched (e.g. /admin/stats), not the raw URI: "/admin;x=1/stats" or "/%61dmin/stats"
+        // reach the same handler but don't start with "/admin/". Raw URI only when nothing matched (404).
+        Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        String path = pattern != null ? pattern.toString() : request.getRequestURI();
         String ip = clientIp.of(request);
 
         if (path.startsWith("/admin/")) {

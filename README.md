@@ -118,6 +118,9 @@ open). Ten wrong admin keys from one IP lock that IP out of admin requests for 1
 Behind a proxy, set `FLAGMAN_TRUSTED_PROXIES` to the number of proxies that append to
 `X-Forwarded-For`, then check `GET /admin/client-ip` (admin key) shows your own address.
 
+`GET /admin/stats` (admin key) lists new demo visitors per day for the last 90 days: the number of
+sandboxes created, kept in `demo_visits` because sandboxes themselves are deleted. It stores no IPs.
+
 ### Errors
 
 Errors use the [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem detail format:

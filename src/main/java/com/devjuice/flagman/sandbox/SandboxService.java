@@ -9,6 +9,7 @@ import com.devjuice.flagman.stream.StreamHub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -19,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -37,15 +39,18 @@ public class SandboxService {
     private final StreamHub streams;
     private final SandboxProperties props;
     private final TransactionTemplate tx;
+    private final JdbcTemplate jdbc;
 
     public SandboxService(SandboxRepository sandboxes, ProjectRepository projects, FeatureFlagService flags,
-                          StreamHub streams, SandboxProperties props, PlatformTransactionManager txManager) {
+                          StreamHub streams, SandboxProperties props, PlatformTransactionManager txManager,
+                          JdbcTemplate jdbc) {
         this.sandboxes = sandboxes;
         this.projects = projects;
         this.flags = flags;
         this.streams = streams;
         this.props = props;
         this.tx = new TransactionTemplate(txManager);
+        this.jdbc = jdbc;
     }
 
     public SandboxResponse create() {
@@ -69,6 +74,8 @@ public class SandboxService {
                 flags.createFlag(projectId, request); // every environment off, 0%, no rules
             }
             sandboxes.save(new Sandbox(projectId, hash(token), LocalDateTime.now()));
+            jdbc.update("INSERT INTO demo_visits (day, visitors) VALUES (?, 1) ON DUPLICATE KEY UPDATE visitors = visitors + 1",
+                    LocalDate.now());
             return new SandboxResponse(projectId, props.environment(), token);
         });
     }
