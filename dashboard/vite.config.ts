@@ -7,8 +7,8 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
 function contentSecurityPolicy(apiUrl: string | undefined): Plugin {
   const api = apiUrl ? new URL(apiUrl).origin : ''
   const policy = [
-    "default-src 'self'", "script-src 'self'", "style-src 'self' https://fonts.googleapis.com",
-    'font-src https://fonts.gstatic.com', "img-src 'self' data:", `connect-src 'self' ${api}`.trim(),
+    "default-src 'self'", "script-src 'self'", "style-src 'self'",
+    "font-src 'self'", "img-src 'self' data:", `connect-src 'self' ${api}`.trim(),
     "base-uri 'self'", "form-action 'self'", "object-src 'none'",
   ].join('; ')
   return {
