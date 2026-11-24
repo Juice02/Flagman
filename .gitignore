@@ -38,3 +38,6 @@ build/
 # Third-party Claude Code skills, installed per machine (npx skills add ...)
 .claude/skills/
 skills-lock.json
+
+### macOS ###
+.DS_Store
