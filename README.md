@@ -10,6 +10,9 @@ who match targeting rules, or for a percentage of users, without a redeploy.
 FlagMan stores flags per project, keeps a separate config for each environment (`DEV`, `STAGING`,
 `PREPROD`, `PROD`), and answers one question for an app: *is this flag on for this user?*
 
+Live demo: https://flagman-demo.onrender.com ([flagman-demo](https://github.com/Juice02/flagman-demo)). The
+API sleeps when idle, so the first load can take 1–2 minutes.
+
 ## How evaluation works
 
 `POST /evaluate` checks three things in order and stops at the first that fails:
