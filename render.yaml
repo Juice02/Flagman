@@ -1,7 +1,6 @@
 # Render Blueprint: the API, the dashboard and the demo on Render's free plan, with the database on
 # TiDB Cloud (MySQL-compatible). Values marked sync: false are entered in Render's dashboard when the
 # Blueprint is created; they are never stored in this file.
-# Not yet tested on Render: check every service after the first deploy (see README, "Hosting").
 services:
   - type: web
     name: flagman-api
