@@ -79,7 +79,7 @@ public class AccessInterceptor implements HandlerInterceptor {
             }
             return true;
         }
-        if (method.equals("POST") && path.equals("/evaluate")) {
+        if (method.equals("POST") && (path.equals("/evaluate") || path.equals("/evaluate/flags"))) {
             limit("evaluate:" + ip, 300, MINUTE, "Too many requests. Try again in a minute."); // a read, but it costs database queries
             return true;
         }

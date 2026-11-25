@@ -39,6 +39,7 @@ public class StreamHub {
     private final Map<Key, Set<SseEmitter>> streams = new ConcurrentHashMap<>();
     private final Map<SseEmitter, String> owners = new ConcurrentHashMap<>();
     private final Map<String, AtomicInteger> openPerIp = new ConcurrentHashMap<>();
+    private final Set<SseEmitter> revisionOnly = ConcurrentHashMap.newKeySet();
     private final SnapshotService snapshots;
 
     public StreamHub(SnapshotService snapshots, @Value("${flagman.max-streams-per-ip}") int maxPerIp) {
@@ -46,7 +47,7 @@ public class StreamHub {
         this.maxPerIp = maxPerIp;
     }
 
-    public SseEmitter subscribe(int projectId, Environment environment, String ip) {
+    public SseEmitter subscribe(int projectId, Environment environment, String ip, boolean onlyRevision) {
         Snapshot first = snapshots.build(projectId, environment); // 404 for an unknown project, before the stream opens
         if (owners.size() >= MAX_TOTAL) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "The demo is busy. Try again later.");
@@ -59,6 +60,9 @@ public class StreamHub {
         Key key = new Key(projectId, environment);
         SseEmitter emitter = new SseEmitter(0L); // no timeout; the client's EventSource reconnects if it drops
         owners.put(emitter, ip);
+        if (onlyRevision) {
+            revisionOnly.add(emitter);
+        }
         streams.compute(key, (k, set) -> {
             Set<SseEmitter> emitters = set == null ? ConcurrentHashMap.newKeySet() : set;
             emitters.add(emitter);
@@ -67,7 +71,7 @@ public class StreamHub {
         emitter.onCompletion(() -> remove(key, emitter));
         emitter.onTimeout(() -> remove(key, emitter));
         emitter.onError(e -> remove(key, emitter));
-        send(key, emitter, SseEmitter.event().name("snapshot").id(Long.toString(first.revision())).data(first));
+        send(key, emitter, event(emitter, first));
         return emitter;
     }
 
@@ -80,8 +84,7 @@ public class StreamHub {
             }
             try {
                 Snapshot snapshot = snapshots.build(key.projectId(), key.environment());
-                emitters.forEach(e -> send(key, e, SseEmitter.event().name("snapshot")
-                        .id(Long.toString(snapshot.revision())).data(snapshot)));
+                emitters.forEach(e -> send(key, e, event(e, snapshot)));
             } catch (RuntimeException e) {
                 // The write already committed; a failed broadcast must not turn its response into an error.
                 log.warn("Could not send snapshot for project {} {}", key.projectId(), key.environment(), e);
@@ -110,6 +113,15 @@ public class StreamHub {
         streams.values().forEach(emitters -> emitters.forEach(SseEmitter::complete));
     }
 
+    // A "snapshot" with every flag and rule, or for revision-only streams a "change" without them.
+    private SseEmitter.SseEventBuilder event(SseEmitter emitter, Snapshot snapshot) {
+        SseEmitter.SseEventBuilder event = SseEmitter.event().id(Long.toString(snapshot.revision()));
+        return revisionOnly.contains(emitter)
+                ? event.name("change").data(Map.of("projectId", snapshot.projectId(),
+                        "environment", snapshot.environment(), "revision", snapshot.revision()))
+                : event.name("snapshot").data(snapshot);
+    }
+
     private void send(Key key, SseEmitter emitter, SseEmitter.SseEventBuilder event) {
         try {
             emitter.send(event);
@@ -120,6 +132,7 @@ public class StreamHub {
 
     private void remove(Key key, SseEmitter emitter) {
         String ip = owners.remove(emitter); // only the first removal of an emitter counts
+        revisionOnly.remove(emitter);
         if (ip != null) {
             openPerIp.computeIfPresent(ip, (k, n) -> n.decrementAndGet() <= 0 ? null : n);
         }

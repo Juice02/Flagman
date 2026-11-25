@@ -9,11 +9,16 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
-// POST /evaluate: loads one flag's config and rules, then runs the shared Evaluator.
+// POST /evaluate and /evaluate/flags: load each flag's config and rules, then run the shared Evaluator.
 @Service
 public class EvaluationService {
+
+    // Each flag costs two database reads; the cap keeps one request cheap.
+    static final int MAX_FLAGS = 20;
 
     private final FeatureFlagConfigService featureFlagConfigService;
     private final RuleRepository ruleRepository;
@@ -35,6 +40,30 @@ public class EvaluationService {
         Map<String, String> attributes = request.getAttributes() == null ? Map.of() : request.getAttributes();
         return Evaluator.evaluate(
                 FlagState.of(config, ruleRepository.findByFeatureFlagConfig(config)), request.getUserId(), attributes);
+    }
+
+    // Every listed flag for one user, in the order asked; what a browser or mobile app needs on load and after a change.
+    public Map<String, EvaluateResponse> evaluateFlags(EvaluateRequest request) {
+        List<String> flagKeys = request.getFlagKeys();
+        if (request.getProjectId() == null || request.getEnvironment() == null || isBlank(request.getUserId())
+                || flagKeys == null || flagKeys.isEmpty() || flagKeys.stream().anyMatch(this::isBlank)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "projectId, environment, userId and flagKeys are required");
+        }
+        if (flagKeys.size() > MAX_FLAGS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At most " + MAX_FLAGS + " flags per request");
+        }
+        Map<String, EvaluateResponse> results = new LinkedHashMap<>();
+        for (String flagKey : flagKeys) {
+            EvaluateRequest one = new EvaluateRequest();
+            one.setProjectId(request.getProjectId());
+            one.setEnvironment(request.getEnvironment());
+            one.setUserId(request.getUserId());
+            one.setAttributes(request.getAttributes());
+            one.setFlagKey(flagKey);
+            results.put(flagKey, evaluate(one));
+        }
+        return results;
     }
 
     private boolean isBlank(String value) {

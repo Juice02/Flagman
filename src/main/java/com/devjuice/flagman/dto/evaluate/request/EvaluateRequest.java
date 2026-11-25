@@ -2,12 +2,14 @@ package com.devjuice.flagman.dto.evaluate.request;
 
 import com.devjuice.flagman.entity.Environment;
 
+import java.util.List;
 import java.util.Map;
 
 public class EvaluateRequest {
 
     private Integer projectId;
     private String flagKey;
+    private List<String> flagKeys; // POST /evaluate/flags only
     private Environment environment;
     private String userId;
     private Map<String, String> attributes;
@@ -50,5 +52,13 @@ public class EvaluateRequest {
 
     public void setAttributes(Map<String, String> attributes) {
         this.attributes = attributes;
+    }
+
+    public List<String> getFlagKeys() {
+        return flagKeys;
+    }
+
+    public void setFlagKeys(List<String> flagKeys) {
+        this.flagKeys = flagKeys;
     }
 }
