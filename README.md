@@ -74,6 +74,14 @@ Comparisons are case-sensitive; the operator name is not. `attribute` is up to 1
 
 ### Live updates
 
+```mermaid
+flowchart LR
+    W["Dashboard or demo panel"] -- "change a flag, config or rule" --> A["FlagMan API"]
+    A -- "save, revision + 1" --> DB[("MySQL / TiDB")]
+    A -- "snapshot after the commit (SSE)" --> C["Open streams: apps, demo pages"]
+    C -- "evaluate each flag locally" --> C
+```
+
 Instead of calling `/evaluate` for every user and flag, a client can open the stream once and evaluate
 flags itself:
 
