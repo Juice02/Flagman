@@ -18,7 +18,7 @@ import java.util.Map;
 public class EvaluationService {
 
     // Each flag costs two database reads; the cap keeps one request cheap.
-    static final int MAX_FLAGS = 20;
+    public static final int MAX_FLAGS = 20;
 
     private final FeatureFlagConfigService featureFlagConfigService;
     private final RuleRepository ruleRepository;
@@ -35,6 +35,7 @@ public class EvaluationService {
                     HttpStatus.BAD_REQUEST, "projectId, flagKey, environment and userId are required");
         }
 
+        checkSizes(request);
         FeatureFlagConfig config = featureFlagConfigService.findConfig(
                 request.getProjectId(), request.getFlagKey(), request.getEnvironment());
         Map<String, String> attributes = request.getAttributes() == null ? Map.of() : request.getAttributes();
@@ -64,6 +65,18 @@ public class EvaluationService {
             results.put(flagKey, evaluate(one));
         }
         return results;
+    }
+
+    // The same limits rules have, so a request can't make the server hold or compare huge values.
+    private void checkSizes(EvaluateRequest request) {
+        Map<String, String> attributes = request.getAttributes();
+        boolean tooBig = request.getUserId().length() > 100 || (attributes != null && (attributes.size() > 20
+                || attributes.entrySet().stream().anyMatch(a -> a.getKey() == null || a.getKey().length() > 100
+                        || (a.getValue() != null && a.getValue().length() > 255))));
+        if (tooBig) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "userId is up to 100 characters; at most 20 attributes, names up to 100 and values up to 255 characters");
+        }
     }
 
     private boolean isBlank(String value) {

@@ -50,6 +50,25 @@ class EvaluateFlagsTest {
         assertThrows(ResponseStatusException.class, () -> service.evaluateFlags(request(Collections.nCopies(21, "dark-mode"))));
     }
 
+    @Test
+    void refusesOversizedUsers() {
+        EvaluateRequest longId = request(List.of("dark-mode"));
+        longId.setUserId("u".repeat(101));
+        EvaluateRequest manyAttributes = request(List.of("dark-mode"));
+        Map<String, String> attributes = new java.util.HashMap<>();
+        for (int i = 0; i < 21; i++) {
+            attributes.put("a" + i, "x");
+        }
+        manyAttributes.setAttributes(attributes);
+        EvaluateRequest longValue = request(List.of("dark-mode"));
+        longValue.setAttributes(Map.of("country", "x".repeat(256)));
+
+        for (EvaluateRequest tooBig : List.of(longId, manyAttributes, longValue)) {
+            ResponseStatusException e = assertThrows(ResponseStatusException.class, () -> service.evaluateFlags(tooBig));
+            assertEquals(400, e.getStatusCode().value());
+        }
+    }
+
     private static EvaluateRequest request(List<String> flagKeys) {
         EvaluateRequest request = new EvaluateRequest();
         request.setProjectId(1);

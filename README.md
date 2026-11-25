@@ -53,7 +53,7 @@ and bodies are uppercase.
 | `POST` | `/projects/{projectId}/flags/{flagKey}/configs/{environment}/rules` | Add a rule. 201 |
 | `DELETE` | `/projects/{projectId}/flags/{flagKey}/configs/{environment}/rules/{ruleId}` | Remove a rule. 204 |
 | `POST` | `/evaluate` | Evaluate a flag for a user (see above) |
-| `POST` | `/evaluate/flags` | Evaluate several flags (up to 20) for one user in one call: send `flagKeys` instead of `flagKey`; returns `{"dark-mode": {"enabled": true, "reason": "IN_ROLLOUT"}, ...}` |
+| `POST` | `/evaluate/flags` | Evaluate several flags (up to 20) for one user in one call: send `flagKeys` instead of `flagKey`. For both, `userId` is up to 100 characters and `attributes` up to 20, names up to 100 and values up to 255; returns `{"dark-mode": {"enabled": true, "reason": "IN_ROLLOUT"}, ...}` |
 | `GET` | `/projects/{projectId}/environments/{environment}/snapshot` | Every flag in that environment with its rollout and rules, plus the project's `revision` |
 | `GET` | `/projects/{projectId}/environments/{environment}/stream` | The same snapshot as a live stream (Server-Sent Events), sent on connect and after every change. With `?revisionOnly=true`, only a `change` event with the new `revision`, without flags or rules |
 
@@ -133,7 +133,7 @@ only a SHA-256 hash of each token. Sandboxes unused for 24 hours are deleted, wi
 5,000 exist at once (`FLAGMAN_SANDBOX_MAX`). Sandboxes don't appear in `GET /projects`.
 
 Per-IP limits (in memory, so they reset on restart and assume one instance): 60 changes a minute,
-10 new sandboxes an hour, 300 `/evaluate` and `/evaluate/flags` calls a minute (together), 30 new streams a minute, and 10 open streams
+10 new sandboxes an hour, 600 flag evaluations a minute (`/evaluate` counts one, `/evaluate/flags` one per flag), 30 new streams a minute, and 10 open streams
 (`FLAGMAN_MAX_STREAMS_PER_IP`; Compose raises it locally because Docker Desktop keeps closed connections
 open). Ten wrong admin keys from one IP lock that IP out of admin requests for 15 minutes.
 Behind a proxy, set `FLAGMAN_TRUSTED_PROXIES` to the number of proxies that append to
