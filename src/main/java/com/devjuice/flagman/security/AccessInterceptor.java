@@ -32,6 +32,9 @@ public class AccessInterceptor implements HandlerInterceptor {
 
     private static final Logger log = LoggerFactory.getLogger(AccessInterceptor.class);
     private static final Duration MINUTE = Duration.ofMinutes(1);
+    // Counted per flag evaluated, since each costs database reads: /evaluate is one, /evaluate/flags one per flag.
+    private static final int EVALUATIONS_PER_MINUTE = 600;
+    private static final String TOO_MANY_EVALUATIONS = "Too many requests. Try again in a minute.";
 
     // The only routes a sandbox token can use; everything else needs the admin key.
     private static final Set<String> SANDBOX_ROUTES = Set.of(
@@ -79,8 +82,8 @@ public class AccessInterceptor implements HandlerInterceptor {
             }
             return true;
         }
-        if (method.equals("POST") && path.equals("/evaluate")) {
-            limit("evaluate:" + ip, 300, MINUTE, "Too many requests. Try again in a minute."); // a read, but it costs database queries
+        if (method.equals("POST") && (path.equals("/evaluate") || path.equals("/evaluate/flags"))) {
+            limit("evaluate:" + ip, EVALUATIONS_PER_MINUTE, MINUTE, TOO_MANY_EVALUATIONS); // a read, but it costs database queries
             return true;
         }
         if (method.equals("POST") && path.equals("/sandboxes")) {
@@ -103,6 +106,14 @@ public class AccessInterceptor implements HandlerInterceptor {
         request.setAttribute(SANDBOX, sandbox);
         sandboxes.touch(sandbox.getProjectId());
         return true;
+    }
+
+    // preHandle already counted one evaluation for /evaluate/flags; count the request's other flags.
+    public void countMoreEvaluations(HttpServletRequest request, int more) {
+        String key = "evaluate:" + clientIp.of(request);
+        for (int i = 0; i < more; i++) {
+            limit(key, EVALUATIONS_PER_MINUTE, MINUTE, TOO_MANY_EVALUATIONS);
+        }
     }
 
     private boolean sandboxMayChange(Sandbox sandbox, HttpServletRequest request) {

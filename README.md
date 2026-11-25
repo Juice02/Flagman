@@ -53,8 +53,9 @@ and bodies are uppercase.
 | `POST` | `/projects/{projectId}/flags/{flagKey}/configs/{environment}/rules` | Add a rule. 201 |
 | `DELETE` | `/projects/{projectId}/flags/{flagKey}/configs/{environment}/rules/{ruleId}` | Remove a rule. 204 |
 | `POST` | `/evaluate` | Evaluate a flag for a user (see above) |
+| `POST` | `/evaluate/flags` | Evaluate several flags (up to 20) for one user in one call: send `flagKeys` instead of `flagKey`. For both, `userId` is up to 100 characters and `attributes` up to 20, names up to 100 and values up to 255; returns `{"dark-mode": {"enabled": true, "reason": "IN_ROLLOUT"}, ...}` |
 | `GET` | `/projects/{projectId}/environments/{environment}/snapshot` | Every flag in that environment with its rollout and rules, plus the project's `revision` |
-| `GET` | `/projects/{projectId}/environments/{environment}/stream` | The same snapshot as a live stream (Server-Sent Events), sent on connect and after every change |
+| `GET` | `/projects/{projectId}/environments/{environment}/stream` | The same snapshot as a live stream (Server-Sent Events), sent on connect and after every change. With `?revisionOnly=true`, only a `change` event with the new `revision`, without flags or rules |
 
 A rule compares one user attribute with a value:
 
@@ -74,7 +75,24 @@ Comparisons are case-sensitive; the operator name is not. `attribute` is up to 1
 
 ### Live updates
 
-Instead of calling `/evaluate` for every user and flag, a client can open the stream once and evaluate
+```mermaid
+flowchart LR
+    W["Dashboard or demo panel"] -- "change a flag, config or rule" --> A["FlagMan API"]
+    A -- "save, revision + 1" --> DB[("MySQL / TiDB")]
+    A -- "full snapshot after the commit" --> S["Backend apps (stream)"]
+    S -- "evaluate locally" --> S
+    A -- "revision only, no rules" --> B["Browsers and mobile apps (stream?revisionOnly=true)"]
+    B -- "POST /evaluate/flags for their user" --> A
+```
+
+Two ways to stay current, as in hosted flag services:
+
+- **Browsers and mobile apps** open `.../stream?revisionOnly=true`, which sends only
+  `{"projectId", "environment", "revision"}` (event `change`), and call `POST /evaluate/flags` with their
+  own user on load and after each change. They never see the rules. flagman-demo works this way.
+- **Backend apps** can open the full stream once and evaluate flags themselves, without a call per user:
+
+Instead of calling `/evaluate` for every user and flag, a backend can open the stream once and evaluate
 flags itself:
 
 ```sh
@@ -91,7 +109,7 @@ curl -N localhost:8081/projects/6767/environments/DEV/stream
 - A `: ping` comment every 25 s keeps idle connections open through proxies.
 - To evaluate, use the same order and rules as `/evaluate` (see [How evaluation works](#how-evaluation-works)).
   `src/test/resources/evaluation-cases.json` lists inputs and expected answers; a client should pass
-  all of them. `flagman-demo` has a TypeScript version that does.
+  all of them.
 - Snapshots include every rule's value. Don't put anything a browser user shouldn't read into rules
   of a project that browsers stream.
 - Open streams live in the app's memory, so this works with one app instance.
@@ -115,7 +133,7 @@ only a SHA-256 hash of each token. Sandboxes unused for 24 hours are deleted, wi
 5,000 exist at once (`FLAGMAN_SANDBOX_MAX`). Sandboxes don't appear in `GET /projects`.
 
 Per-IP limits (in memory, so they reset on restart and assume one instance): 60 changes a minute,
-10 new sandboxes an hour, 300 `/evaluate` calls a minute, 30 new streams a minute, and 10 open streams
+10 new sandboxes an hour, 600 flag evaluations a minute (`/evaluate` counts one, `/evaluate/flags` one per flag), 30 new streams a minute, and 10 open streams
 (`FLAGMAN_MAX_STREAMS_PER_IP`; Compose raises it locally because Docker Desktop keeps closed connections
 open). Ten wrong admin keys from one IP lock that IP out of admin requests for 15 minutes.
 Behind a proxy, set `FLAGMAN_TRUSTED_PROXIES` to the number of proxies that append to

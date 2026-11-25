@@ -10,10 +10,13 @@ import com.devjuice.flagman.stream.StreamHub;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-// Lets clients evaluate flags themselves: a snapshot of every flag in an environment, once or as a live stream.
+// A snapshot of every flag in an environment, once or as a live stream, for clients that evaluate flags
+// themselves (backend apps). ?revisionOnly=true streams only "changed, revision N" without the rules, for
+// browsers that ask /evaluate/flags instead.
 @RestController
 public class SnapshotController {
 
@@ -36,8 +39,8 @@ public class SnapshotController {
 
     @GetMapping(path = "/projects/{projectId}/environments/{environment}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@PathVariable Integer projectId, @PathVariable Environment environment,
-                             HttpServletRequest request) {
-        SseEmitter emitter = streams.subscribe(projectId, environment, clientIp.of(request));
+                             @RequestParam(defaultValue = "false") boolean revisionOnly, HttpServletRequest request) {
+        SseEmitter emitter = streams.subscribe(projectId, environment, clientIp.of(request), revisionOnly);
         sandboxes.touch(projectId); // a visitor watching their sandbox keeps it from being cleaned up
         return emitter;
     }
